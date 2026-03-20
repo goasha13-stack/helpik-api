@@ -179,6 +179,31 @@
             font-size: 14px;
             color: #555;
         }
+        
+        /* Стили для debug */
+        .debug-info {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: monospace;
+            color: #666;
+            word-break: break-all;
+        }
+        
+        .debug-info summary {
+            cursor: pointer;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .debug-content {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #dee2e6;
+        }
     </style>
 </head>
 <body>
@@ -257,12 +282,26 @@
                         <div class="phone-header">
                             <span class="phone-number">${r.phone}</span>
                             <span class="badge ${r.is_clean ? 'clean' : 'occupied'}">
-                                ${r.is_clean ? '✅ Чистый' : '❌ Занят'}
+                                ${r.is_clean ? '✅ ЧИСТЫЙ' : '❌ ЗАНЯТ'}
                             </span>
                         </div>
                         <div style="font-size: 14px; color: #666; margin-top: 10px;">
                             ${r.has_yoomoney ? '• Привязан кошелёк ЮMoney<br>' : '• Кошелёк не привязан'}
                         </div>
+                        ${r.debug ? `
+                        <details class="debug-info">
+                            <summary>🔧 Debug (кликните чтобы развернуть)</summary>
+                            <div class="debug-content">
+                                <strong>Status:</strong> ${r.debug.status || 'N/A'}<br>
+                                <strong>Error:</strong> ${r.debug.error || 'N/A'}<br>
+                                <strong>Has contract_amount:</strong> ${r.debug.has_contract_amount}<br>
+                                <strong>Has request_id:</strong> ${r.debug.has_request_id}<br>
+                                <hr style="margin: 8px 0; border: none; border-top: 1px solid #dee2e6;">
+                                <strong>Full response:</strong><br>
+                                <pre style="margin-top: 5px; white-space: pre-wrap; word-break: break-all;">${JSON.stringify(r.debug.full_response, null, 2)}</pre>
+                            </div>
+                        </details>
+                        ` : ''}
                     </div>
                 `).join('');
                 
