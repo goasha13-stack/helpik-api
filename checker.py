@@ -1,5 +1,6 @@
 import requests
 import re
+import time
 from typing import Dict
 
 class YandexPayChecker:
@@ -22,136 +23,180 @@ class YandexPayChecker:
             digits = '7' + digits
         return '+' + digits
     
+    def check_method_1(self, phone: str) -> Dict:
+        """Метод 1: request-payment API"""
+        try:
+            url = "https://yoomoney.ru/api/request-payment"
+            data = {
+                'pattern_id': 'p2p',
+                'to': phone,
+                'amount': '1.00',
+                'test_payment': 'true'
+            }
+            response = self.session.post(url, data=data, timeout=10)
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                # Точные признаки
+                if 'contract_amount' in result:
+                    return {'exists': True, 'confidence': 'high', 'method': 'contract_amount'}
+                
+                if result.get('error') == 'payee_not_found':
+                    return {'exists': False, 'confidence': 'high', 'method': 'payee_not_found'}
+                
+                if result.get('status') == 'success':
+                    return {'exists': True, 'confidence': 'medium', 'method': 'success_status'}
+                
+                return {'exists': None, 'confidence': 'low', 'raw': result}
+            
+            return {'exists': None, 'confidence': 'low', 'error': f'HTTP {response.status_code}'}
+            
+        except Exception as e:
+            return {'exists': None, 'confidence': 'low', 'error': str(e)}
+    
+    def check_method_2(self, phone: str) -> Dict:
+        """Метод 2: Проверка через форму перевода"""
+        try:
+            url = "https://yoomoney.ru/transfer"
+            params = {'to': phone}
+            response = self.session.get(url, params=params, timeout=10)
+            
+            if response.status_code == 200:
+                text = response.text.lower()
+                
+                # Если есть форма для ввода суммы - кошелек существует
+                if 'amount' in text or 'сумма' in text or 'перевод' in text:
+                    return {'exists': True, 'confidence': 'medium', 'method': 'transfer_form'}
+                
+                # Если ошибка "не найден"
+                if 'не найден' in text or 'not found' in text:
+                    return {'exists': False, 'confidence': 'medium', 'method': 'not_found_page'}
+                
+                return {'exists': None, 'confidence': 'low'}
+            
+            return {'exists': None, 'confidence': 'low', 'error': f'HTTP {response.status_code}'}
+            
+        except Exception as e:
+            return {'exists': None, 'confidence': 'low', 'error': str(e)}
+    
+    def check_method_3(self, phone: str) -> Dict:
+        """Метод 3: Проверка через process-payment"""
+        try:
+            # Сначала получаем request_id
+            url1 = "https://yoomoney.ru/api/request-payment"
+            data = {
+                'pattern_id': 'p2p',
+                'to': phone,
+                'amount': '1.00'
+            }
+            response1 = self.session.post(url1, data=data, timeout=10)
+            
+            if response1.status_code != 200:
+                return {'exists': None, 'confidence': 'low'}
+            
+            result1 = response1.json()
+            request_id = result1.get('request_id')
+            
+            if not request_id:
+                return {'exists': None, 'confidence': 'low'}
+            
+            # Пробуем process-payment
+            url2 = "https://yoomoney.ru/api/process-payment"
+            data2 = {'request_id': request_id}
+            response2 = self.session.post(url2, data=data2, timeout=10)
+            
+            if response2.status_code == 200:
+                result2 = response2.json()
+                error = result2.get('error', '')
+                
+                if 'payee' in error or 'получатель' in error:
+                    return {'exists': False, 'confidence': 'high', 'method': 'process_payee_error'}
+                
+                if error in ['limit_exceeded', 'not_enough_funds']:
+                    return {'exists': True, 'confidence': 'high', 'method': 'process_limit_error'}
+                
+                return {'exists': True, 'confidence': 'medium', 'method': 'process_other'}
+            
+            return {'exists': None, 'confidence': 'low'}
+            
+        except Exception as e:
+            return {'exists': None, 'confidence': 'low', 'error': str(e)}
+    
     def check_wallet_exists(self, phone: str) -> Dict:
         """
-        Проверка через API request-payment
+        Комплексная проверка всеми методами
         """
         normalized = self.normalize_phone(phone)
         
-        try:
-            url = "https://yoomoney.ru/api/request-payment"
-            
-            data = {
-                'pattern_id': 'p2p',
-                'to': normalized,
-                'amount': '1.00',
-                'comment': 'test',
-                'test_payment': 'true'
-            }
-            
-            response = self.session.post(url, data=data, timeout=10)
-            result = response.json() if response.status_code == 200 else {}
-            
-            print(f"DEBUG: {normalized} -> {result}")  # Для отладки
-            
-            status = result.get('status', '')
-            error = result.get('error', '')
-            
-            # Кошелек НЕ существует ТОЛЬКО если явно указано payee_not_found
-            if error == 'payee_not_found' or 'not_found' in str(error):
-                return {
-                    'phone': normalized,
-                    'exists': False,
-                    'status': 'clean',
-                    'message': 'Кошелек не существует'
-                }
-            
-            # Если есть contract_amount - кошелек точно существует
-            if 'contract_amount' in result:
-                return {
-                    'phone': normalized,
-                    'exists': True,
-                    'status': 'occupied',
-                    'message': f'Кошелек существует (сумма: {result["contract_amount"]})'
-                }
-            
-            # Если статус success и нет ошибок - проверяем дальше
-            if status == 'success':
-                # Проверяем есть ли информация о получателе
-                if 'receiver' in str(result).lower() or 'recipient' in str(result).lower():
-                    return {
-                        'phone': normalized,
-                        'exists': True,
-                        'status': 'occupied',
-                        'message': 'Кошелек найден (есть данные получателя)'
-                    }
-                
-                # Если success но нет данных получателя - возможно кошелька нет
-                # Нужно проверить через process-payment
-                return self._verify_via_process_payment(normalized, result.get('request_id'))
-            
-            # Любая другая ошибка - считаем что кошелька нет (безопаснее)
+        # Пробуем методы по очереди
+        results = []
+        
+        # Метод 1 (самый точный)
+        r1 = self.check_method_1(normalized)
+        results.append(r1)
+        
+        if r1['confidence'] == 'high':
             return {
                 'phone': normalized,
-                'exists': False,
-                'status': 'clean',
-                'message': f'Кошелек не найден (ошибка: {error})'
-            }
-            
-        except Exception as e:
-            return {
-                'phone': normalized,
-                'exists': None,
-                'status': 'error',
-                'message': str(e)
-            }
-    
-    def _verify_via_process_payment(self, phone: str, request_id: str) -> Dict:
-        """
-        Дополнительная проверка через process-payment
-        """
-        if not request_id:
-            return {
-                'phone': phone,
-                'exists': False,
-                'status': 'unknown',
-                'message': 'Нет request_id для проверки'
+                'exists': r1['exists'],
+                'method': r1['method'],
+                'confidence': 'high'
             }
         
-        try:
-            url = "https://yoomoney.ru/api/process-payment"
-            data = {
-                'request_id': request_id,
-                'test_payment': 'true'
-            }
-            
-            response = self.session.post(url, data=data, timeout=10)
-            result = response.json() if response.status_code == 200 else {}
-            
-            error = result.get('error', '')
-            
-            # Если ошибка про получателя - кошелька нет
-            if 'payee' in str(error).lower() or 'receiver' in str(error).lower() or 'not_found' in str(error):
-                return {
-                    'phone': phone,
-                    'exists': False,
-                    'status': 'clean',
-                    'message': 'Кошелек не существует (проверка process-payment)'
-                }
-            
-            # Если другая ошибка (например, не хватает денег) - кошелек есть
-            if error and error != 'payee_not_found':
-                return {
-                    'phone': phone,
-                    'exists': True,
-                    'status': 'occupied',
-                    'message': f'Кошелек существует (ошибка: {error})'
-                }
-            
+        # Метод 2
+        r2 = self.check_method_2(normalized)
+        results.append(r2)
+        
+        if r2['confidence'] == 'high':
             return {
-                'phone': phone,
+                'phone': normalized,
+                'exists': r2['exists'],
+                'method': r2['method'],
+                'confidence': 'high'
+            }
+        
+        # Метод 3
+        r3 = self.check_method_3(normalized)
+        results.append(r3)
+        
+        if r3['confidence'] == 'high':
+            return {
+                'phone': normalized,
+                'exists': r3['exists'],
+                'method': r3['method'],
+                'confidence': 'high'
+            }
+        
+        # Если есть совпадение средних confidence
+        exists_count = sum(1 for r in results if r.get('exists') is True)
+        not_exists_count = sum(1 for r in results if r.get('exists') is False)
+        
+        if exists_count > not_exists_count:
+            return {
+                'phone': normalized,
                 'exists': True,
-                'status': 'occupied',
-                'message': 'Кошелек найден'
+                'method': 'majority_vote',
+                'confidence': 'medium',
+                'details': results
             }
-            
-        except Exception as e:
+        elif not_exists_count > exists_count:
             return {
-                'phone': phone,
-                'exists': None,
-                'status': 'error',
-                'message': str(e)
+                'phone': normalized,
+                'exists': False,
+                'method': 'majority_vote',
+                'confidence': 'medium',
+                'details': results
             }
+        
+        # По умолчанию - неизвестно (но для безопасности считаем что нет)
+        return {
+            'phone': normalized,
+            'exists': False,
+            'method': 'default_unknown',
+            'confidence': 'low',
+            'details': results
+        }
     
     def full_check(self, phone: str) -> Dict:
         result = self.check_wallet_exists(phone)
@@ -161,6 +206,6 @@ class YandexPayChecker:
             'is_clean': not result['exists'] if result['exists'] is not None else None,
             'has_yoomoney': result['exists'],
             'has_yandex_pay': result['exists'],
-            'status': result['status'],
-            'message': result['message']
+            'confidence': result['confidence'],
+            'method': result['method']
         }
