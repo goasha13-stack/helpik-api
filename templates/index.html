@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Helpik - Проверка номеров для Yandex Pay</title>
+    <title>Helpik - Проверка номеров + Дата рождения</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
         body { 
@@ -124,7 +124,7 @@
         
         .phone-card.clean { border-color: #28a745; background: #d4edda; }
         .phone-card.occupied { border-color: #ffc107; background: #fff3cd; }
-        .phone-card.blocked { border-color: #dc3545; background: #f8d7da; }
+        .phone-card.has-data { border-color: #17a2b8; background: #d1ecf1; }
         
         .phone-header {
             display: flex;
@@ -149,31 +149,58 @@
         
         .badge.clean { background: #28a745; color: white; }
         .badge.occupied { background: #ffc107; color: #333; }
-        .badge.blocked { background: #dc3545; color: white; }
+        .badge.has-data { background: #17a2b8; color: white; }
         
-        .risk-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            margin-top: 8px;
+        .birth-date-box {
+            margin: 15px 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            text-align: center;
+            color: white;
         }
         
-        .risk-low { background: #d4edda; color: #155724; }
-        .risk-medium { background: #fff3cd; color: #856404; }
-        .risk-high { background: #f8d7da; color: #721c24; }
-        .risk-blocked { background: #dc3545; color: white; }
+        .birth-date-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
         
-        .recommendation {
-            margin-top: 12px;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
+        .birth-date-value {
+            font-size: 32px;
+            font-weight: 700;
+            font-family: monospace;
+        }
+        
+        .birth-date-name {
+            font-size: 16px;
+            margin-top: 8px;
+            opacity: 0.95;
+        }
+        
+        .birth-date-partial {
+            margin: 15px 0;
+            padding: 15px;
+            background: #fff3cd;
+            border: 2px dashed #ffc107;
+            border-radius: 12px;
             text-align: center;
+        }
+        
+        .birth-date-partial .label {
+            font-size: 12px;
+            color: #856404;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        
+        .birth-date-partial .value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #856404;
+            font-family: monospace;
         }
         
         .service-status {
@@ -194,17 +221,12 @@
             font-size: 16px;
         }
         
-        .warnings {
-            margin-top: 10px;
-            padding: 10px;
-            background: #fff3cd;
-            border-radius: 6px;
-            font-size: 13px;
-            color: #856404;
-        }
-        
-        .warnings .warning-item {
-            margin-bottom: 4px;
+        .recommendation {
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
         }
         
         .loading {
@@ -238,6 +260,20 @@
             color: #555;
         }
         
+        .manual-check {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .manual-check a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
         .debug-info {
             margin-top: 15px;
             padding: 10px;
@@ -267,15 +303,15 @@
     <div class="container">
         <div class="header">
             <h1>🔍 Helpik</h1>
-            <p>Проверка номеров для открытия Yandex Pay</p>
+            <p>Проверка номеров + Дата рождения из Госуслуг</p>
         </div>
         
         <div class="content">
             <div class="help-text">
-                Введите номера телефонов (по одному на строке). Система оценит:
-                <br>• Можно ли открыть карту Yandex Pay
-                <br>• Есть ли риск блокировки
-                <br>• Рекомендацию: покупать номер или нет
+                Введите номера телефонов (по одному на строке). Система найдёт:
+                <br>• Дату рождения предыдущего владельца (ДД.ММ.ГГГГ)
+                <br>• Имя владельца (если доступно)
+                <br>• Привязки к Яндексу
             </div>
             
             <div class="input-section">
@@ -331,33 +367,63 @@
                             <div class="stat-label">Чистые</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-number" style="color: #ffc107;">${data.risky}</div>
-                            <div class="stat-label">Рискованные</div>
+                            <div class="stat-number" style="color: #17a2b8;">${data.with_gosuslugi}</div>
+                            <div class="stat-label">С Госуслугами</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-number" style="color: #dc3545;">${data.blocked}</div>
-                            <div class="stat-label">Заблокированы</div>
+                            <div class="stat-number" style="color: #667eea;">${data.with_birth_date}</div>
+                            <div class="stat-label">С датой рождения</div>
                         </div>
                     </div>
                 `;
                 
                 const phonesHtml = data.results.map(r => {
-                    const cardClass = r.is_blocked ? 'blocked' : (r.is_clean ? 'clean' : 'occupied');
-                    const badgeClass = r.is_blocked ? 'blocked' : (r.is_clean ? 'clean' : 'occupied');
-                    const badgeText = r.is_blocked ? 'ЗАБЛОКИРОВАН' : (r.is_clean ? '✅ ЧИСТЫЙ' : '⚠️ ЗАНЯТ');
+                    let cardClass = 'clean';
+                    let badgeClass = 'clean';
+                    let badgeText = '✅ ЧИСТЫЙ';
                     
-                    const riskClass = r.risk_level === 'low' ? 'risk-low' : 
-                                     (r.risk_level === 'medium' ? 'risk-medium' : 
-                                     (r.risk_level === 'blocked' ? 'risk-blocked' : 'risk-high'));
-                    const riskText = r.risk_level === 'low' ? '✓ Низкий риск' : 
-                                    (r.risk_level === 'medium' ? '⚠️ Средний риск' : 
-                                    (r.risk_level === 'blocked' ? '❌ Блокировка' : '❌ Высокий риск'));
+                    if (r.birth_date && r.birth_date.year) {
+                        cardClass = 'has-data';
+                        badgeClass = 'has-data';
+                        badgeText = '📋 ДАННЫЕ НАЙДЕНЫ';
+                    } else if (r.has_gosuslugi) {
+                        cardClass = 'has-data';
+                        badgeClass = 'has-data';
+                        badgeText = '📋 ГОСУСЛУГИ';
+                    } else if (!r.is_clean) {
+                        cardClass = 'occupied';
+                        badgeClass = 'occupied';
+                        badgeText = '⚠️ ЗАНЯТ';
+                    }
                     
+                    // Полная дата или частичная
+                    let birthDateHtml = '';
+                    if (r.birth_date && r.birth_date.day && r.birth_date.month && r.birth_date.year) {
+                        // Полная дата
+                        birthDateHtml = `
+                            <div class="birth-date-box">
+                                <div class="birth-date-label">Дата рождения предыдущего владельца</div>
+                                <div class="birth-date-value">${r.birth_date.formatted}</div>
+                                ${r.gosuslugi_name ? `<div class="birth-date-name">${r.gosuslugi_name}</div>` : ''}
+                            </div>
+                        `;
+                    } else if (r.birth_date && r.birth_date.year) {
+                        // Только год
+                        birthDateHtml = `
+                            <div class="birth-date-partial">
+                                <div class="label">Известен только год рождения</div>
+                                <div class="value">??.??.${r.birth_date.year}</div>
+                                <div class="manual-check">
+                                    Для получения полной даты проверьте вручную на 
+                                    <a href="https://gosuslugi.ru" target="_blank">gosuslugi.ru</a>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    const gosuslugiIcon = r.has_gosuslugi ? '📋' : '❌';
                     const yandexIdIcon = r.has_yandex_id ? '❌' : '✅';
                     const yoomoneyIcon = r.has_yoomoney ? '❌' : '✅';
-                    
-                    const warningsHtml = r.warnings && r.warnings.length > 0 ? 
-                        `<div class="warnings">${r.warnings.map(w => `<div class="warning-item">⚠️ ${w}</div>`).join('')}</div>` : '';
                     
                     return `
                     <div class="phone-card ${cardClass}">
@@ -366,11 +432,13 @@
                             <span class="badge ${badgeClass}">${badgeText}</span>
                         </div>
                         
-                        <div class="risk-indicator ${riskClass}">
-                            ${riskText} ${r.risk_score > 0 ? `(риск ${r.risk_score}%)` : ''}
-                        </div>
+                        ${birthDateHtml}
                         
                         <div class="service-status">
+                            <div class="service-item">
+                                <span class="icon">${gosuslugiIcon}</span>
+                                <span>Госуслуги: ${r.has_gosuslugi ? 'найдены' : 'не найдены'}</span>
+                            </div>
                             <div class="service-item">
                                 <span class="icon">${yandexIdIcon}</span>
                                 <span>Yandex ID: ${r.has_yandex_id ? 'есть' : 'нет'}</span>
@@ -381,9 +449,7 @@
                             </div>
                         </div>
                         
-                        ${warningsHtml}
-                        
-                        <div class="recommendation" style="background: ${r.can_open_card ? '#d4edda' : '#f8d7da'}; color: ${r.can_open_card ? '#155724' : '#721c24'};">
+                        <div class="recommendation" style="background: ${r.birth_date?.year ? '#d1ecf1' : (r.is_clean ? '#d4edda' : '#fff3cd')}; color: ${r.birth_date?.year ? '#0c5460' : (r.is_clean ? '#155724' : '#856404')};">
                             ${r.recommendation}
                         </div>
                         
@@ -391,6 +457,9 @@
                         <details class="debug-info">
                             <summary>🔧 Debug</summary>
                             <div class="debug-content">
+                                <strong>Госуслуги:</strong><br>
+                                ${JSON.stringify(r.debug.gosuslugi, null, 2)}<br>
+                                <hr style="margin: 8px 0;">
                                 <strong>Yandex ID:</strong><br>
                                 ${JSON.stringify(r.debug.yandex_id, null, 2)}<br>
                                 <hr style="margin: 8px 0;">
