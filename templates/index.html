@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Helpik - Проверка номеров + Дата рождения</title>
+    <title>Helpik - Проверка номеров + Полная дата рождения</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
         body { 
@@ -61,6 +61,25 @@
             border-color: #667eea;
         }
         
+        .checkbox-wrapper {
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .checkbox-wrapper input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .checkbox-wrapper label {
+            margin: 0;
+            cursor: pointer;
+            font-weight: normal;
+        }
+        
         .btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -89,27 +108,27 @@
         
         .stats {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
             margin-bottom: 20px;
         }
         
         .stat-card {
             background: #f8f9fa;
-            padding: 20px;
+            padding: 15px 10px;
             border-radius: 12px;
             text-align: center;
         }
         
         .stat-number {
-            font-size: 28px;
+            font-size: 24px;
             font-weight: 700;
             color: #667eea;
         }
         
         .stat-label {
             color: #666;
-            font-size: 13px;
+            font-size: 12px;
             margin-top: 5px;
         }
         
@@ -124,6 +143,7 @@
         
         .phone-card.clean { border-color: #28a745; background: #d4edda; }
         .phone-card.occupied { border-color: #ffc107; background: #fff3cd; }
+        .phone-card.blocked { border-color: #dc3545; background: #f8d7da; }
         .phone-card.has-data { border-color: #17a2b8; background: #d1ecf1; }
         
         .phone-header {
@@ -149,19 +169,31 @@
         
         .badge.clean { background: #28a745; color: white; }
         .badge.occupied { background: #ffc107; color: #333; }
+        .badge.blocked { background: #dc3545; color: white; }
         .badge.has-data { background: #17a2b8; color: white; }
         
         .birth-date-box {
             margin: 15px 0;
-            padding: 20px;
+            padding: 25px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 12px;
             text-align: center;
             color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .birth-date-box::before {
+            content: '🎂';
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 40px;
+            opacity: 0.3;
         }
         
         .birth-date-label {
-            font-size: 12px;
+            font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 2px;
             opacity: 0.9;
@@ -169,20 +201,31 @@
         }
         
         .birth-date-value {
-            font-size: 32px;
+            font-size: 36px;
             font-weight: 700;
-            font-family: monospace;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         
         .birth-date-name {
-            font-size: 16px;
+            font-size: 18px;
+            margin-top: 10px;
+            font-weight: 500;
+        }
+        
+        .birth-date-method {
+            font-size: 11px;
             margin-top: 8px;
-            opacity: 0.95;
+            opacity: 0.8;
+            background: rgba(255,255,255,0.2);
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
         }
         
         .birth-date-partial {
             margin: 15px 0;
-            padding: 15px;
+            padding: 20px;
             background: #fff3cd;
             border: 2px dashed #ffc107;
             border-radius: 12px;
@@ -194,19 +237,20 @@
             color: #856404;
             text-transform: uppercase;
             margin-bottom: 8px;
+            font-weight: 600;
         }
         
         .birth-date-partial .value {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: 700;
             color: #856404;
-            font-family: monospace;
+            font-family: 'Courier New', monospace;
         }
         
         .service-status {
             font-size: 14px;
             color: #666;
-            margin-top: 10px;
+            margin-top: 15px;
             line-height: 1.6;
         }
         
@@ -214,19 +258,23 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
+            padding: 4px 0;
         }
         
         .service-status .icon {
             font-size: 16px;
+            width: 20px;
+            text-align: center;
         }
         
         .recommendation {
-            margin-top: 12px;
-            padding: 12px;
+            margin-top: 15px;
+            padding: 15px;
             border-radius: 8px;
             font-size: 14px;
             font-weight: 600;
+            text-align: center;
         }
         
         .loading {
@@ -260,18 +308,14 @@
             color: #555;
         }
         
-        .manual-check {
-            margin-top: 10px;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 6px;
+        .warning-text {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 0 8px 8px 0;
             font-size: 13px;
-            color: #666;
-        }
-        
-        .manual-check a {
-            color: #667eea;
-            text-decoration: none;
+            color: #856404;
         }
         
         .debug-info {
@@ -280,7 +324,7 @@
             background: #f8f9fa;
             border: 1px solid #dee2e6;
             border-radius: 6px;
-            font-size: 12px;
+            font-size: 11px;
             font-family: monospace;
             color: #666;
             word-break: break-all;
@@ -296,6 +340,17 @@
             margin-top: 10px;
             padding-top: 10px;
             border-top: 1px solid #dee2e6;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        @media (max-width: 768px) {
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .birth-date-value {
+                font-size: 28px;
+            }
         }
     </style>
 </head>
@@ -303,26 +358,35 @@
     <div class="container">
         <div class="header">
             <h1>🔍 Helpik</h1>
-            <p>Проверка номеров + Дата рождения из Госуслуг</p>
+            <p>Проверка номеров: Госуслуги (ДД.ММ.ГГГГ) + Яндекс + ЮMoney</p>
         </div>
         
         <div class="content">
             <div class="help-text">
-                Введите номера телефонов (по одному на строке). Система найдёт:
-                <br>• Дату рождения предыдущего владельца (ДД.ММ.ГГГГ)
-                <br>• Имя владельца (если доступно)
-                <br>• Привязки к Яндексу
+                <strong>Введите номера телефонов</strong> (по одному на строке). 
+                Система найдёт полную дату рождения из Госуслуг через Selenium.
+            </div>
+            
+            <div class="warning-text">
+                ⚠️ <strong>Selenium режим:</strong> медленнее (~10-15 сек/номер), но даёт полную дату ДД.ММ.ГГГГ. 
+                Без Selenium — только год.
             </div>
             
             <div class="input-section">
                 <label for="phones">Номера телефонов:</label>
-                <textarea id="phones" placeholder="+79001234567&#10;+79007654321&#10;+79161234567"></textarea>
+                <textarea id="phones" placeholder="+79001234567&#10;89113725286&#10;+79326371319"></textarea>
+                
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" id="useSelenium" checked>
+                    <label for="useSelenium">Использовать Selenium (полная дата рождения)</label>
+                </div>
+                
                 <button class="btn" onclick="checkPhones()" id="checkBtn">Проверить номера</button>
             </div>
             
             <div class="loading" id="loading">
                 <div class="spinner"></div>
-                <p>Проверяем номера...</p>
+                <p id="loadingText">Проверяем номера... (это может занять время)</p>
             </div>
             
             <div class="results" id="results"></div>
@@ -334,7 +398,9 @@
             const textarea = document.getElementById('phones');
             const btn = document.getElementById('checkBtn');
             const loading = document.getElementById('loading');
+            const loadingText = document.getElementById('loadingText');
             const results = document.getElementById('results');
+            const useSelenium = document.getElementById('useSelenium').checked;
             
             const phones = textarea.value.split('\n').filter(p => p.trim());
             
@@ -347,14 +413,25 @@
             loading.style.display = 'block';
             results.innerHTML = '';
             
+            if (useSelenium) {
+                loadingText.textContent = `Проверяем ${phones.length} номер(ов) через Selenium... (~${phones.length * 15} сек)`;
+            }
+            
             try {
                 const response = await fetch('/api/check-batch', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phones: phones })
+                    body: JSON.stringify({ 
+                        phones: phones,
+                        use_selenium: useSelenium
+                    })
                 });
                 
                 const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
                 
                 const statsHtml = `
                     <div class="stats">
@@ -367,12 +444,16 @@
                             <div class="stat-label">Чистые</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-number" style="color: #17a2b8;">${data.with_gosuslugi}</div>
-                            <div class="stat-label">С Госуслугами</div>
+                            <div class="stat-number" style="color: #dc3545;">${data.blocked}</div>
+                            <div class="stat-label">Блок</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-number" style="color: #667eea;">${data.with_birth_date}</div>
-                            <div class="stat-label">С датой рождения</div>
+                            <div class="stat-number" style="color: #17a2b8;">${data.with_gosuslugi}</div>
+                            <div class="stat-label">Госуслуги</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" style="color: #667eea;">${data.with_full_date}</div>
+                            <div class="stat-label">Полная дата</div>
                         </div>
                     </div>
                 `;
@@ -382,10 +463,14 @@
                     let badgeClass = 'clean';
                     let badgeText = '✅ ЧИСТЫЙ';
                     
-                    if (r.birth_date && r.birth_date.year) {
+                    if (r.is_blocked) {
+                        cardClass = 'blocked';
+                        badgeClass = 'blocked';
+                        badgeText = '❌ БЛОК';
+                    } else if (r.birth_date && r.birth_date.day) {
                         cardClass = 'has-data';
                         badgeClass = 'has-data';
-                        badgeText = '📋 ДАННЫЕ НАЙДЕНЫ';
+                        badgeText = '🎂 ДАТА НАЙДЕНА';
                     } else if (r.has_gosuslugi) {
                         cardClass = 'has-data';
                         badgeClass = 'has-data';
@@ -396,34 +481,29 @@
                         badgeText = '⚠️ ЗАНЯТ';
                     }
                     
-                    // Полная дата или частичная
+                    // Блок с датой рождения
                     let birthDateHtml = '';
                     if (r.birth_date && r.birth_date.day && r.birth_date.month && r.birth_date.year) {
-                        // Полная дата
                         birthDateHtml = `
                             <div class="birth-date-box">
                                 <div class="birth-date-label">Дата рождения предыдущего владельца</div>
                                 <div class="birth-date-value">${r.birth_date.formatted}</div>
                                 ${r.gosuslugi_name ? `<div class="birth-date-name">${r.gosuslugi_name}</div>` : ''}
+                                <div class="birth-date-method">через ${r.gosuslugi_method}</div>
                             </div>
                         `;
                     } else if (r.birth_date && r.birth_date.year) {
-                        // Только год
                         birthDateHtml = `
                             <div class="birth-date-partial">
-                                <div class="label">Известен только год рождения</div>
+                                <div class="label">Только год рождения</div>
                                 <div class="value">??.??.${r.birth_date.year}</div>
-                                <div class="manual-check">
-                                    Для получения полной даты проверьте вручную на 
-                                    <a href="https://gosuslugi.ru" target="_blank">gosuslugi.ru</a>
-                                </div>
                             </div>
                         `;
                     }
                     
-                    const gosuslugiIcon = r.has_gosuslugi ? '📋' : '❌';
-                    const yandexIdIcon = r.has_yandex_id ? '❌' : '✅';
-                    const yoomoneyIcon = r.has_yoomoney ? '❌' : '✅';
+                    const gosuslugiIcon = r.has_gosuslugi ? (r.birth_date?.day ? '🎂' : '📋') : '❌';
+                    const yandexIcon = r.yandex_blocked ? '🚫' : (r.has_yandex_id ? '⚠️' : '✅');
+                    const yoomoneyIcon = r.has_yoomoney ? '💰' : '✅';
                     
                     return `
                     <div class="phone-card ${cardClass}">
@@ -437,11 +517,11 @@
                         <div class="service-status">
                             <div class="service-item">
                                 <span class="icon">${gosuslugiIcon}</span>
-                                <span>Госуслуги: ${r.has_gosuslugi ? 'найдены' : 'не найдены'}</span>
+                                <span>Госуслуги: ${r.has_gosuslugi ? (r.birth_date?.day ? 'дата найдена' : 'найдены') : 'не найдены'}</span>
                             </div>
                             <div class="service-item">
-                                <span class="icon">${yandexIdIcon}</span>
-                                <span>Yandex ID: ${r.has_yandex_id ? 'есть' : 'нет'}</span>
+                                <span class="icon">${yandexIcon}</span>
+                                <span>Yandex ID: ${r.yandex_blocked ? 'заблокирован' : (r.has_yandex_id ? 'есть' : 'нет')}</span>
                             </div>
                             <div class="service-item">
                                 <span class="icon">${yoomoneyIcon}</span>
@@ -449,7 +529,7 @@
                             </div>
                         </div>
                         
-                        <div class="recommendation" style="background: ${r.birth_date?.year ? '#d1ecf1' : (r.is_clean ? '#d4edda' : '#fff3cd')}; color: ${r.birth_date?.year ? '#0c5460' : (r.is_clean ? '#155724' : '#856404')};">
+                        <div class="recommendation" style="background: ${r.is_blocked ? '#f8d7da' : (r.birth_date?.day ? '#d1ecf1' : (r.is_clean ? '#d4edda' : '#fff3cd'))}; color: ${r.is_blocked ? '#721c24' : (r.birth_date?.day ? '#0c5460' : (r.is_clean ? '#155724' : '#856404'))};">
                             ${r.recommendation}
                         </div>
                         
@@ -460,7 +540,7 @@
                                 <strong>Госуслуги:</strong><br>
                                 ${JSON.stringify(r.debug.gosuslugi, null, 2)}<br>
                                 <hr style="margin: 8px 0;">
-                                <strong>Yandex ID:</strong><br>
+                                <strong>Yandex:</strong><br>
                                 ${JSON.stringify(r.debug.yandex_id, null, 2)}<br>
                                 <hr style="margin: 8px 0;">
                                 <strong>ЮMoney:</strong><br>
@@ -473,8 +553,11 @@
                 
                 results.innerHTML = statsHtml + phonesHtml;
                 
+                // Закрываем драйвер на сервере
+                await fetch('/api/close-driver', {method: 'POST'});
+                
             } catch (error) {
-                results.innerHTML = `<div style="color: #dc3545; text-align: center;">Ошибка: ${error.message}</div>`;
+                results.innerHTML = `<div style="color: #dc3545; text-align: center; padding: 20px;">Ошибка: ${error.message}</div>`;
             }
             
             loading.style.display = 'none';
