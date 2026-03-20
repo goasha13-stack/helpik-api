@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Helpik - Проверка номеров</title>
+    <title>Helpik - Проверка номеров для Yandex Pay</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
         body { 
@@ -12,7 +12,7 @@
             padding: 40px 20px;
         }
         .container { 
-            max-width: 800px; 
+            max-width: 900px; 
             margin: 0 auto; 
             background: white; 
             border-radius: 20px; 
@@ -89,7 +89,7 @@
         
         .stats {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 15px;
             margin-bottom: 20px;
         }
@@ -102,14 +102,14 @@
         }
         
         .stat-number {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 700;
             color: #667eea;
         }
         
         .stat-label {
             color: #666;
-            font-size: 14px;
+            font-size: 13px;
             margin-top: 5px;
         }
         
@@ -123,7 +123,8 @@
         }
         
         .phone-card.clean { border-color: #28a745; background: #d4edda; }
-        .phone-card.occupied { border-color: #dc3545; background: #f8d7da; }
+        .phone-card.occupied { border-color: #ffc107; background: #fff3cd; }
+        .phone-card.blocked { border-color: #dc3545; background: #f8d7da; }
         
         .phone-header {
             display: flex;
@@ -147,7 +148,33 @@
         }
         
         .badge.clean { background: #28a745; color: white; }
-        .badge.occupied { background: #dc3545; color: white; }
+        .badge.occupied { background: #ffc107; color: #333; }
+        .badge.blocked { background: #dc3545; color: white; }
+        
+        .risk-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+        
+        .risk-low { background: #d4edda; color: #155724; }
+        .risk-medium { background: #fff3cd; color: #856404; }
+        .risk-high { background: #f8d7da; color: #721c24; }
+        .risk-blocked { background: #dc3545; color: white; }
+        
+        .recommendation {
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+        }
         
         .service-status {
             font-size: 14px;
@@ -167,12 +194,17 @@
             font-size: 16px;
         }
         
-        .service-details {
-            font-size: 12px;
-            color: #888;
-            margin-top: 8px;
-            padding-top: 8px;
-            border-top: 1px solid rgba(0,0,0,0.1);
+        .warnings {
+            margin-top: 10px;
+            padding: 10px;
+            background: #fff3cd;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #856404;
+        }
+        
+        .warnings .warning-item {
+            margin-bottom: 4px;
         }
         
         .loading {
@@ -235,15 +267,15 @@
     <div class="container">
         <div class="header">
             <h1>🔍 Helpik</h1>
-            <p>Проверка купленных номеров на привязку к Яндекс ID / Pay / ЮMoney</p>
+            <p>Проверка номеров для открытия Yandex Pay</p>
         </div>
         
         <div class="content">
             <div class="help-text">
-                Введите номера телефонов (по одному на строке). Система проверит:
-                <br>• Есть ли Yandex ID (аккаунт Яндекса)
-                <br>• Привязан ли кошелёк ЮMoney
-                <br>• Есть ли выпущенная карта Yandex Pay
+                Введите номера телефонов (по одному на строке). Система оценит:
+                <br>• Можно ли открыть карту Yandex Pay
+                <br>• Есть ли риск блокировки
+                <br>• Рекомендацию: покупать номер или нет
             </div>
             
             <div class="input-section">
@@ -292,69 +324,78 @@
                     <div class="stats">
                         <div class="stat-card">
                             <div class="stat-number">${data.total}</div>
-                            <div class="stat-label">Всего номеров</div>
+                            <div class="stat-label">Всего</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-number" style="color: #28a745;">${data.clean}</div>
                             <div class="stat-label">Чистые</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-number" style="color: #dc3545;">${data.occupied}</div>
-                            <div class="stat-label">Занятые</div>
+                            <div class="stat-number" style="color: #ffc107;">${data.risky}</div>
+                            <div class="stat-label">Рискованные</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" style="color: #dc3545;">${data.blocked}</div>
+                            <div class="stat-label">Заблокированы</div>
                         </div>
                     </div>
                 `;
                 
                 const phonesHtml = data.results.map(r => {
+                    const cardClass = r.is_blocked ? 'blocked' : (r.is_clean ? 'clean' : 'occupied');
+                    const badgeClass = r.is_blocked ? 'blocked' : (r.is_clean ? 'clean' : 'occupied');
+                    const badgeText = r.is_blocked ? 'ЗАБЛОКИРОВАН' : (r.is_clean ? '✅ ЧИСТЫЙ' : '⚠️ ЗАНЯТ');
+                    
+                    const riskClass = r.risk_level === 'low' ? 'risk-low' : 
+                                     (r.risk_level === 'medium' ? 'risk-medium' : 
+                                     (r.risk_level === 'blocked' ? 'risk-blocked' : 'risk-high'));
+                    const riskText = r.risk_level === 'low' ? '✓ Низкий риск' : 
+                                    (r.risk_level === 'medium' ? '⚠️ Средний риск' : 
+                                    (r.risk_level === 'blocked' ? '❌ Блокировка' : '❌ Высокий риск'));
+                    
                     const yandexIdIcon = r.has_yandex_id ? '❌' : '✅';
-                    const yandexIdText = r.has_yandex_id ? 'Yandex ID: ЗАНЯТ' : 'Yandex ID: чисто';
                     const yoomoneyIcon = r.has_yoomoney ? '❌' : '✅';
-                    const yoomoneyText = r.has_yoomoney ? 'ЮMoney: ЗАНЯТ' : 'ЮMoney: чисто';
-                    const yandexPayIcon = r.has_yandex_pay ? '❌' : '✅';
-                    const yandexPayText = r.has_yandex_pay ? 'Yandex Pay: ЗАНЯТ' : 'Yandex Pay: чисто';
+                    
+                    const warningsHtml = r.warnings && r.warnings.length > 0 ? 
+                        `<div class="warnings">${r.warnings.map(w => `<div class="warning-item">⚠️ ${w}</div>`).join('')}</div>` : '';
                     
                     return `
-                    <div class="phone-card ${r.is_clean ? 'clean' : 'occupied'}">
+                    <div class="phone-card ${cardClass}">
                         <div class="phone-header">
                             <span class="phone-number">${r.phone}</span>
-                            <span class="badge ${r.is_clean ? 'clean' : 'occupied'}">
-                                ${r.is_clean ? '✅ ЧИСТЫЙ' : '❌ ЗАНЯТ'}
-                            </span>
+                            <span class="badge ${badgeClass}">${badgeText}</span>
                         </div>
+                        
+                        <div class="risk-indicator ${riskClass}">
+                            ${riskText} ${r.risk_score > 0 ? `(риск ${r.risk_score}%)` : ''}
+                        </div>
+                        
                         <div class="service-status">
                             <div class="service-item">
                                 <span class="icon">${yandexIdIcon}</span>
-                                <span>${yandexIdText}</span>
+                                <span>Yandex ID: ${r.has_yandex_id ? 'есть' : 'нет'}</span>
                             </div>
                             <div class="service-item">
                                 <span class="icon">${yoomoneyIcon}</span>
-                                <span>${yoomoneyText}</span>
-                            </div>
-                            <div class="service-item">
-                                <span class="icon">${yandexPayIcon}</span>
-                                <span>${yandexPayText}</span>
+                                <span>ЮMoney: ${r.has_yoomoney ? 'есть' : 'нет'}</span>
                             </div>
                         </div>
-                        ${r.yandex_id_message || r.yoomoney_message || r.yandex_pay_message ? `
-                        <div class="service-details">
-                            ${r.yandex_id_message ? `<div>Yandex ID: ${r.yandex_id_message}</div>` : ''}
-                            ${r.yoomoney_message ? `<div>ЮMoney: ${r.yoomoney_message}</div>` : ''}
-                            ${r.yandex_pay_message ? `<div>Yandex Pay: ${r.yandex_pay_message}</div>` : ''}
+                        
+                        ${warningsHtml}
+                        
+                        <div class="recommendation" style="background: ${r.can_open_card ? '#d4edda' : '#f8d7da'}; color: ${r.can_open_card ? '#155724' : '#721c24'};">
+                            ${r.recommendation}
                         </div>
-                        ` : ''}
+                        
                         ${r.debug ? `
                         <details class="debug-info">
-                            <summary>🔧 Debug (кликните чтобы развернуть)</summary>
+                            <summary>🔧 Debug</summary>
                             <div class="debug-content">
                                 <strong>Yandex ID:</strong><br>
                                 ${JSON.stringify(r.debug.yandex_id, null, 2)}<br>
-                                <hr style="margin: 8px 0; border: none; border-top: 1px solid #dee2e6;">
+                                <hr style="margin: 8px 0;">
                                 <strong>ЮMoney:</strong><br>
-                                Status: ${r.debug.yoomoney?.status || 'N/A'}<br>
-                                Error: ${r.debug.yoomoney?.error || 'N/A'}<br>
-                                <hr style="margin: 8px 0; border: none; border-top: 1px solid #dee2e6;">
-                                <strong>Yandex Pay:</strong><br>
-                                ${JSON.stringify(r.debug.yandex_pay, null, 2)}
+                                ${JSON.stringify(r.debug.yoomoney, null, 2)}
                             </div>
                         </details>
                         ` : ''}
