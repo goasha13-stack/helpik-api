@@ -149,6 +149,32 @@
         .badge.clean { background: #28a745; color: white; }
         .badge.occupied { background: #dc3545; color: white; }
         
+        .service-status {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+            line-height: 1.6;
+        }
+        
+        .service-status .service-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        
+        .service-status .icon {
+            font-size: 16px;
+        }
+        
+        .service-details {
+            font-size: 12px;
+            color: #888;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(0,0,0,0.1);
+        }
+        
         .loading {
             text-align: center;
             padding: 40px;
@@ -180,7 +206,6 @@
             color: #555;
         }
         
-        /* Стили для debug */
         .debug-info {
             margin-top: 15px;
             padding: 10px;
@@ -210,12 +235,15 @@
     <div class="container">
         <div class="header">
             <h1>🔍 Helpik</h1>
-            <p>Проверка купленных номеров на привязку к Яндекс Pay / ЮMoney</p>
+            <p>Проверка купленных номеров на привязку к Яндекс ID / Pay / ЮMoney</p>
         </div>
         
         <div class="content">
             <div class="help-text">
-                Введите номера телефонов (по одному на строку). Система проверит, не привязан ли к ним чужой кошелёк ЮMoney.
+                Введите номера телефонов (по одному на строке). Система проверит:
+                <br>• Есть ли Yandex ID (аккаунт Яндекса)
+                <br>• Привязан ли кошелёк ЮMoney
+                <br>• Есть ли выпущенная карта Yandex Pay
             </div>
             
             <div class="input-section">
@@ -277,7 +305,15 @@
                     </div>
                 `;
                 
-                const phonesHtml = data.results.map(r => `
+                const phonesHtml = data.results.map(r => {
+                    const yandexIdIcon = r.has_yandex_id ? '❌' : '✅';
+                    const yandexIdText = r.has_yandex_id ? 'Yandex ID: ЗАНЯТ' : 'Yandex ID: чисто';
+                    const yoomoneyIcon = r.has_yoomoney ? '❌' : '✅';
+                    const yoomoneyText = r.has_yoomoney ? 'ЮMoney: ЗАНЯТ' : 'ЮMoney: чисто';
+                    const yandexPayIcon = r.has_yandex_pay ? '❌' : '✅';
+                    const yandexPayText = r.has_yandex_pay ? 'Yandex Pay: ЗАНЯТ' : 'Yandex Pay: чисто';
+                    
+                    return `
                     <div class="phone-card ${r.is_clean ? 'clean' : 'occupied'}">
                         <div class="phone-header">
                             <span class="phone-number">${r.phone}</span>
@@ -285,25 +321,45 @@
                                 ${r.is_clean ? '✅ ЧИСТЫЙ' : '❌ ЗАНЯТ'}
                             </span>
                         </div>
-                        <div style="font-size: 14px; color: #666; margin-top: 10px;">
-                            ${r.has_yoomoney ? '• Привязан кошелёк ЮMoney<br>' : '• Кошелёк не привязан'}
+                        <div class="service-status">
+                            <div class="service-item">
+                                <span class="icon">${yandexIdIcon}</span>
+                                <span>${yandexIdText}</span>
+                            </div>
+                            <div class="service-item">
+                                <span class="icon">${yoomoneyIcon}</span>
+                                <span>${yoomoneyText}</span>
+                            </div>
+                            <div class="service-item">
+                                <span class="icon">${yandexPayIcon}</span>
+                                <span>${yandexPayText}</span>
+                            </div>
                         </div>
+                        ${r.yandex_id_message || r.yoomoney_message || r.yandex_pay_message ? `
+                        <div class="service-details">
+                            ${r.yandex_id_message ? `<div>Yandex ID: ${r.yandex_id_message}</div>` : ''}
+                            ${r.yoomoney_message ? `<div>ЮMoney: ${r.yoomoney_message}</div>` : ''}
+                            ${r.yandex_pay_message ? `<div>Yandex Pay: ${r.yandex_pay_message}</div>` : ''}
+                        </div>
+                        ` : ''}
                         ${r.debug ? `
                         <details class="debug-info">
                             <summary>🔧 Debug (кликните чтобы развернуть)</summary>
                             <div class="debug-content">
-                                <strong>Status:</strong> ${r.debug.status || 'N/A'}<br>
-                                <strong>Error:</strong> ${r.debug.error || 'N/A'}<br>
-                                <strong>Has contract_amount:</strong> ${r.debug.has_contract_amount}<br>
-                                <strong>Has request_id:</strong> ${r.debug.has_request_id}<br>
+                                <strong>Yandex ID:</strong><br>
+                                ${JSON.stringify(r.debug.yandex_id, null, 2)}<br>
                                 <hr style="margin: 8px 0; border: none; border-top: 1px solid #dee2e6;">
-                                <strong>Full response:</strong><br>
-                                <pre style="margin-top: 5px; white-space: pre-wrap; word-break: break-all;">${JSON.stringify(r.debug.full_response, null, 2)}</pre>
+                                <strong>ЮMoney:</strong><br>
+                                Status: ${r.debug.yoomoney?.status || 'N/A'}<br>
+                                Error: ${r.debug.yoomoney?.error || 'N/A'}<br>
+                                <hr style="margin: 8px 0; border: none; border-top: 1px solid #dee2e6;">
+                                <strong>Yandex Pay:</strong><br>
+                                ${JSON.stringify(r.debug.yandex_pay, null, 2)}
                             </div>
                         </details>
                         ` : ''}
                     </div>
-                `).join('');
+                `}).join('');
                 
                 results.innerHTML = statsHtml + phonesHtml;
                 
