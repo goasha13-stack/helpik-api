@@ -25,13 +25,10 @@ class YandexPayChecker:
     def check_wallet_exists(self, phone: str) -> Dict:
         """
         Проверка через API request-payment
-        Если кошелек существует - вернет статус отличный от payee_not_found
         """
         normalized = self.normalize_phone(phone)
         
         try:
-            # Используем endpoint request-payment без авторизации
-            # Это тестовый запрос, который показывает существует ли получатель
             url = "https://yoomoney.ru/api/request-payment"
             
             data = {
@@ -39,70 +36,58 @@ class YandexPayChecker:
                 'to': normalized,
                 'amount': '1.00',
                 'comment': 'test',
-                'message': 'test',
                 'test_payment': 'true'
             }
             
             response = self.session.post(url, data=data, timeout=10)
+            result = response.json() if response.status_code == 200 else {}
             
-            if response.status_code == 200:
-                result = response.json()
-                status = result.get('status', '')
-                error = result.get('error', '')
-                
-                # Если статус refused и ошибка payee_not_found - кошелька нет
-                if status == 'refused' and error == 'payee_not_found':
-                    return {
-                        'phone': normalized,
-                        'exists': False,
-                        'status': 'clean',
-                        'message': 'Кошелек не существует (payee_not_found)'
-                    }
-                
-                # Если статус success или другая ошибка - кошелек существует
-                if status == 'success' or error in ['limit_exceeded', 'not_enough_funds', 'authorization_reject']:
-                    return {
-                        'phone': normalized,
-                        'exists': True,
-                        'status': 'occupied',
-                        'message': 'Кошелек существует!',
-                        'details': result
-                    }
-                
-                # Любой другой ответ - проверяем наличие contract_amount
-                if 'contract_amount' in result or 'request_id' in result:
-                    return {
-                        'phone': normalized,
-                        'exists': True,
-                        'status': 'occupied',
-                        'message': 'Кошелек найден (есть contract_amount)',
-                        'details': result
-                    }
-                
+            print(f"DEBUG: {normalized} -> {result}")  # Для отладки
+            
+            status = result.get('status', '')
+            error = result.get('error', '')
+            
+            # Кошелек НЕ существует ТОЛЬКО если явно указано payee_not_found
+            if error == 'payee_not_found' or 'not_found' in str(error):
                 return {
                     'phone': normalized,
                     'exists': False,
-                    'status': 'unknown',
-                    'raw': result
+                    'status': 'clean',
+                    'message': 'Кошелек не существует'
                 }
             
-            # Если 401 или 403 - возможно кошелек существует но требует авторизации
-            elif response.status_code in [401, 403]:
+            # Если есть contract_amount - кошелек точно существует
+            if 'contract_amount' in result:
                 return {
                     'phone': normalized,
                     'exists': True,
                     'status': 'occupied',
-                    'message': 'Возможно кошелек существует (требует авторизации)'
+                    'message': f'Кошелек существует (сумма: {result["contract_amount"]})'
                 }
             
-            else:
-                return {
-                    'phone': normalized,
-                    'exists': None,
-                    'status': 'error',
-                    'code': response.status_code
-                }
+            # Если статус success и нет ошибок - проверяем дальше
+            if status == 'success':
+                # Проверяем есть ли информация о получателе
+                if 'receiver' in str(result).lower() or 'recipient' in str(result).lower():
+                    return {
+                        'phone': normalized,
+                        'exists': True,
+                        'status': 'occupied',
+                        'message': 'Кошелек найден (есть данные получателя)'
+                    }
                 
+                # Если success но нет данных получателя - возможно кошелька нет
+                # Нужно проверить через process-payment
+                return self._verify_via_process_payment(normalized, result.get('request_id'))
+            
+            # Любая другая ошибка - считаем что кошелька нет (безопаснее)
+            return {
+                'phone': normalized,
+                'exists': False,
+                'status': 'clean',
+                'message': f'Кошелек не найден (ошибка: {error})'
+            }
+            
         except Exception as e:
             return {
                 'phone': normalized,
@@ -111,111 +96,71 @@ class YandexPayChecker:
                 'message': str(e)
             }
     
-    def check_via_quickpay(self, phone: str) -> Dict:
+    def _verify_via_process_payment(self, phone: str, request_id: str) -> Dict:
         """
-        Альтернативная проверка через quickpay форму
+        Дополнительная проверка через process-payment
         """
-        normalized = self.normalize_phone(phone)
+        if not request_id:
+            return {
+                'phone': phone,
+                'exists': False,
+                'status': 'unknown',
+                'message': 'Нет request_id для проверки'
+            }
         
         try:
-            url = "https://yoomoney.ru/quickpay/confirm"
-            
+            url = "https://yoomoney.ru/api/process-payment"
             data = {
-                'receiver': normalized,
-                'quickpay-form': 'phone',
-                'paymentType': 'AC',
-                'sum': '1.00'
+                'request_id': request_id,
+                'test_payment': 'true'
             }
             
-            response = self.session.post(url, data=data, allow_redirects=False, timeout=10)
+            response = self.session.post(url, data=data, timeout=10)
+            result = response.json() if response.status_code == 200 else {}
             
-            # Анализируем ответ
-            location = response.headers.get('Location', '')
+            error = result.get('error', '')
             
-            # Если редирект на страницу подтверждения - номер найден
-            if 'request-payment' in location or 'process-payment' in location:
+            # Если ошибка про получателя - кошелька нет
+            if 'payee' in str(error).lower() or 'receiver' in str(error).lower() or 'not_found' in str(error):
                 return {
-                    'phone': normalized,
-                    'exists': True,
-                    'method': 'quickpay',
-                    'status': 'occupied'
-                }
-            
-            # Если редирект на ошибку - номер не найден
-            if 'error' in location or response.status_code == 400:
-                return {
-                    'phone': normalized,
+                    'phone': phone,
                     'exists': False,
-                    'method': 'quickpay',
-                    'status': 'clean'
+                    'status': 'clean',
+                    'message': 'Кошелек не существует (проверка process-payment)'
                 }
             
-            # Проверяем содержимое страницы
-            if response.status_code == 200:
-                text = response.text.lower()
-                if 'получатель' in text or 'подтверждение' in text:
-                    return {
-                        'phone': normalized,
-                        'exists': True,
-                        'method': 'quickpay',
-                        'status': 'occupied'
-                    }
-                if 'не найден' in text or 'ошибка' in text:
-                    return {
-                        'phone': normalized,
-                        'exists': False,
-                        'method': 'quickpay',
-                        'status': 'clean'
-                    }
+            # Если другая ошибка (например, не хватает денег) - кошелек есть
+            if error and error != 'payee_not_found':
+                return {
+                    'phone': phone,
+                    'exists': True,
+                    'status': 'occupied',
+                    'message': f'Кошелек существует (ошибка: {error})'
+                }
             
             return {
-                'phone': normalized,
-                'exists': None,
-                'method': 'quickpay',
-                'status': 'unknown'
+                'phone': phone,
+                'exists': True,
+                'status': 'occupied',
+                'message': 'Кошелек найден'
             }
             
         except Exception as e:
             return {
-                'phone': normalized,
+                'phone': phone,
                 'exists': None,
-                'method': 'quickpay',
                 'status': 'error',
                 'message': str(e)
             }
     
     def full_check(self, phone: str) -> Dict:
-        """
-        Комплексная проверка двумя методами
-        """
-        print(f"🔍 Проверка: {phone}")
-        
-        # Метод 1: API request-payment
-        result1 = self.check_wallet_exists(phone)
-        
-        # Если метод 1 дал чёткий ответ - используем его
-        if result1['status'] in ['occupied', 'clean'] and result1['exists'] is not None:
-            return {
-                'phone': result1['phone'],
-                'is_clean': not result1['exists'],
-                'has_yoomoney': result1['exists'],
-                'has_yandex_pay': result1['exists'],  # ЮMoney = Яндекс Pay
-                'status': result1['status'],
-                'message': result1['message'],
-                'method': 'api_request_payment'
-            }
-        
-        # Метод 2: Quickpay форма (fallback)
-        result2 = self.check_via_quickpay(phone)
+        result = self.check_wallet_exists(phone)
         
         return {
-            'phone': result2['phone'],
-            'is_clean': not result2['exists'] if result2['exists'] is not None else None,
-            'has_yoomoney': result2['exists'],
-            'has_yandex_pay': result2['exists'],
-            'status': result2['status'],
-            'message': result2.get('message', 'Проверка через quickpay'),
-            'method': 'quickpay',
-            'api_result': result1,
-            'quickpay_result': result2
+            'phone': result['phone'],
+            'is_clean': not result['exists'] if result['exists'] is not None else None,
+            'has_yoomoney': result['exists'],
+            'has_yandex_pay': result['exists'],
+            'status': result['status'],
+            'message': result['message']
         }
