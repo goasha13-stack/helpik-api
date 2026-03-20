@@ -43,30 +43,80 @@ class YandexPayChecker:
             response = self.session.post(url, data=data, timeout=15)
             
             if response.status_code != 200:
-                return {'phone': normalized, 'exists': None, 'status': 'error', 'message': f'HTTP {response.status_code}'}
+                return {
+                    'phone': normalized, 
+                    'exists': None, 
+                    'status': 'error', 
+                    'message': f'HTTP {response.status_code}',
+                    'raw': {}
+                }
             
             result = response.json()
-            print(f"DEBUG: {normalized} -> {result}")
             
             status = result.get('status', '')
             error = result.get('error', '')
             
+            # Возвращаем raw для отладки
+            raw_response = {
+                'status': status,
+                'error': error,
+                'has_contract_amount': 'contract_amount' in result,
+                'has_request_id': 'request_id' in result,
+                'full_response': result
+            }
+            
             if 'contract_amount' in result:
-                return {'phone': normalized, 'exists': True, 'status': 'occupied', 'message': 'Кошелек существует'}
+                return {
+                    'phone': normalized, 
+                    'exists': True, 
+                    'status': 'occupied', 
+                    'message': 'Кошелек существует',
+                    'raw': raw_response
+                }
             
             if error == 'payee_not_found':
-                return {'phone': normalized, 'exists': False, 'status': 'clean', 'message': 'Кошелек не существует'}
+                return {
+                    'phone': normalized, 
+                    'exists': False, 
+                    'status': 'clean', 
+                    'message': 'Кошелек не существует',
+                    'raw': raw_response
+                }
             
             if error == 'limit_exceeded':
-                return {'phone': normalized, 'exists': True, 'status': 'occupied', 'message': 'Кошелек существует (лимит)'}
+                return {
+                    'phone': normalized, 
+                    'exists': True, 
+                    'status': 'occupied', 
+                    'message': 'Кошелек существует (лимит)',
+                    'raw': raw_response
+                }
             
             if status == 'success':
-                return {'phone': normalized, 'exists': True, 'status': 'occupied', 'message': 'Кошелек найден'}
+                return {
+                    'phone': normalized, 
+                    'exists': True, 
+                    'status': 'occupied', 
+                    'message': 'Кошелек найден',
+                    'raw': raw_response
+                }
             
-            return {'phone': normalized, 'exists': False, 'status': 'clean', 'message': f'Неизвестно: {error}'}
+            return {
+                'phone': normalized, 
+                'exists': False, 
+                'status': 'clean', 
+                'message': f'Неизвестно: {error}',
+                'raw': raw_response
+            }
             
         except Exception as e:
-            return {'phone': normalized, 'exists': None, 'status': 'error', 'message': str(e)}
+            return {
+                'phone': normalized, 
+                'exists': None, 
+                'status': 'error', 
+                'message': str(e),
+                'raw': {}
+            }
 
 checker = YandexPayChecker()
 
@@ -84,11 +134,12 @@ def check_phone():
     
     return jsonify({
         'phone': result['phone'],
-        'is_clean': not result['exists'] if result['exists'] is not None else None,
+        'is_clean': not result['exists'],
         'has_yoomoney': result['exists'],
         'has_yandex_pay': result['exists'],
         'status': result['status'],
-        'message': result['message']
+        'message': result['message'],
+        'debug': result['raw']  # ← Добавлено для отладки
     })
 
 @app.route('/api/check-batch', methods=['POST'])
@@ -100,11 +151,12 @@ def check_batch():
         result = checker.check_wallet_exists(phone)
         results.append({
             'phone': result['phone'],
-            'is_clean': not result['exists'] if result['exists'] is not None else None,
+            'is_clean': not result['exists'],
             'has_yoomoney': result['exists'],
             'has_yandex_pay': result['exists'],
             'status': result['status'],
-            'message': result['message']
+            'message': result['message'],
+            'debug': result['raw']  # ← Добавлено для отладки
         })
     
     clean_count = sum(1 for r in results if r.get('is_clean') is True)
