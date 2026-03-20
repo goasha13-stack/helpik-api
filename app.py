@@ -63,7 +63,6 @@ class YandexPayChecker:
                 'full_response': result
             }
             
-            # Кошелёк существует
             if 'contract_amount' in result or error == 'limit_exceeded' or status == 'success':
                 return {
                     'exists': True,
@@ -72,7 +71,6 @@ class YandexPayChecker:
                     'raw': raw_response
                 }
             
-            # Кошелёк не существует
             if error == 'payee_not_found':
                 return {
                     'exists': False,
@@ -96,16 +94,99 @@ class YandexPayChecker:
                 'raw': {}
             }
     
-    def check_yandex_pay(self, phone):
+    def check_yandex_id(self, phone):
         """
-        Проверка Yandex Pay карты через API привязки телефона
+        Проверка Yandex ID (аккаунта Яндекса) по номеру телефона
         """
         normalized = self.normalize_phone(phone)
-        digits = normalized[1:]  # Убираем +
         
         try:
-            # API проверки доступности номера для Yandex Pay
-            # Эндпоинт проверки занятости номера в системе Яндекс
+            # Метод 1: Проверка через API паспорта (регистрация)
+            url = "https://passport.yandex.ru/registration/validations/phone"
+            
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Language': 'ru-RU,ru;q=0.9',
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Origin': 'https://passport.yandex.ru',
+                'Referer': 'https://passport.yandex.ru/',
+            }
+            
+            data = {
+                'phone': normalized,
+                'track_id': '',
+                'csrf_token': ''
+            }
+            
+            response = self.session.post(url, data=data, headers=headers, timeout=10)
+            result = response.json() if response.text else {}
+            
+            # Если номер уже занят (привязан к аккаунту)
+            if result.get('status') == 'error':
+                errors = result.get('errors', {})
+                if 'phone' in errors and 'occupied' in str(errors['phone']):
+                    return {
+                        'exists': True,
+                        'status': 'occupied',
+                        'message': 'Yandex ID существует (номер занят)',
+                        'raw': result
+                    }
+            
+            # Метод 2: Проверка через API account information
+            url2 = "https://passport.yandex.ru/registration/validations/accountInformation"
+            response2 = self.session.post(url2, data={'phone': normalized}, headers=headers, timeout=10)
+            result2 = response2.json() if response2.text else {}
+            
+            # Если аккаунт существует (есть login)
+            if result2.get('status') == 'ok' or result2.get('login'):
+                return {
+                    'exists': True,
+                    'status': 'occupied',
+                    'message': 'Yandex ID найден',
+                    'raw': result2
+                }
+            
+            # Метод 3: Проверка через API восстановления пароля
+            url3 = "https://passport.yandex.ru/restoration/login-or-phone"
+            response3 = self.session.post(url3, data={'phone': normalized}, headers=headers, timeout=10)
+            result3 = response3.json() if response3.text else {}
+            
+            if result3.get('status') == 'ok' or result3.get('logins'):
+                return {
+                    'exists': True,
+                    'status': 'occupied',
+                    'message': 'Yandex ID найден (через восстановление)',
+                    'raw': result3
+                }
+            
+            return {
+                'exists': False,
+                'status': 'clean',
+                'message': 'Yandex ID не найден',
+                'raw': {
+                    'validation': result,
+                    'account_info': result2,
+                    'restoration': result3
+                }
+            }
+            
+        except Exception as e:
+            return {
+                'exists': False,
+                'status': 'error',
+                'message': f'Ошибка проверки: {str(e)}',
+                'raw': {}
+            }
+    
+    def check_yandex_pay(self, phone):
+        """
+        Проверка Yandex Pay карты
+        """
+        normalized = self.normalize_phone(phone)
+        
+        try:
+            # Проверяем через API Yandex Pay
             url = "https://pay.yandex.ru/api/v1/phone/check"
             
             headers = {
@@ -125,127 +206,84 @@ class YandexPayChecker:
             response = self.session.post(url, json=data, headers=headers, timeout=10)
             result = response.json() if response.text else {}
             
-            # Альтернативный метод: проверка через API паспорта
-            # Если номер уже привязан к аккаунту с Yandex Pay
-            passport_check = self._check_passport_phone(normalized)
+            # Если Yandex ID существует, проверяем есть ли карта
+            yandex_id = self.check_yandex_id(phone)
+            
+            # Если аккаунт есть, предполагаем что может быть карта
+            # (точная проверка требует авторизации)
+            if yandex_id['exists']:
+                return {
+                    'exists': True,  # Предполагаем наличие
+                    'status': 'occupied',
+                    'message': 'Возможна Yandex Pay карта (аккаунт существует)',
+                    'raw': {
+                        'pay_api': result,
+                        'yandex_id': yandex_id
+                    }
+                }
             
             return {
-                'exists': passport_check.get('has_yandex_pay', False),
-                'status': 'occupied' if passport_check.get('has_yandex_pay') else 'clean',
-                'message': 'Yandex Pay карта найдена' if passport_check.get('has_yandex_pay') else 'Yandex Pay карты нет',
+                'exists': False,
+                'status': 'clean',
+                'message': 'Yandex Pay карты нет (нет аккаунта)',
                 'raw': {
                     'pay_api': result,
-                    'passport_check': passport_check
+                    'yandex_id': yandex_id
                 }
             }
             
         except Exception as e:
-            # Fallback: проверяем через паспорт
-            passport_check = self._check_passport_phone(normalized)
+            yandex_id = self.check_yandex_id(phone)
             return {
-                'exists': passport_check.get('has_yandex_pay', False),
-                'status': 'error' if not passport_check.get('has_yandex_pay') else 'occupied',
-                'message': passport_check.get('message', str(e)),
-                'raw': {'error': str(e), 'passport_check': passport_check}
-            }
-    
-    def _check_passport_phone(self, phone):
-        """
-        Проверка через API Яндекс.Паспорта
-        Возвращает информацию о привязке номера к аккаунту
-        """
-        try:
-            # Проверка через API валидации номера
-            url = "https://passport.yandex.ru/registration/validations/phone"
-            
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Accept': 'application/json, text/plain, */*',
-                'Accept-Language': 'ru-RU,ru;q=0.9',
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Origin': 'https://passport.yandex.ru',
-                'Referer': 'https://passport.yandex.ru/',
-            }
-            
-            data = {
-                'phone': phone,
-                'track_id': '',
-                'csrf_token': ''
-            }
-            
-            response = self.session.post(url, data=data, headers=headers, timeout=10)
-            result = response.json() if response.text else {}
-            
-            # Если номер уже занят (привязан к аккаунту)
-            if result.get('status') == 'error' and 'occupied' in str(result.get('errors', {})):
-                return {
-                    'has_yandex_pay': True,  # Предполагаем, что у существующего аккаунта может быть карта
-                    'occupied': True,
-                    'message': 'Номер привязан к аккаунту Яндекс'
-                }
-            
-            # Проверка через API account information
-            url2 = "https://passport.yandex.ru/registration/validations/accountInformation"
-            response2 = self.session.post(url2, data={'phone': phone}, headers=headers, timeout=10)
-            result2 = response2.json() if response2.text else {}
-            
-            # Если аккаунт существует
-            if result2.get('status') == 'ok' or 'login' in result2:
-                return {
-                    'has_yandex_pay': True,
-                    'occupied': True,
-                    'message': 'Аккаунт Яндекс существует',
-                    'raw': result2
-                }
-            
-            return {
-                'has_yandex_pay': False,
-                'occupied': False,
-                'message': 'Аккаунт не найден',
-                'raw': result2
-            }
-            
-        except Exception as e:
-            return {
-                'has_yandex_pay': False,
-                'occupied': False,
-                'message': f'Ошибка проверки: {str(e)}',
-                'raw': {}
+                'exists': yandex_id.get('exists', False),
+                'status': 'error' if not yandex_id.get('exists') else 'occupied',
+                'message': 'Проверка через Yandex ID',
+                'raw': {'error': str(e), 'yandex_id': yandex_id}
             }
     
     def check_wallet_exists(self, phone):
         """
-        Комплексная проверка: ЮMoney + Yandex Pay
+        Комплексная проверка: Yandex ID + ЮMoney + Yandex Pay
         """
         normalized = self.normalize_phone(phone)
         
-        # Проверяем оба сервиса
+        # Проверяем все три сервиса
+        yandex_id_result = self.check_yandex_id(phone)
         yoomoney_result = self.check_yoomoney(phone)
         yandex_pay_result = self.check_yandex_pay(phone)
         
         # Определяем общий статус
-        # ЗАНЯТ если есть ЮMoney ИЛИ есть Yandex Pay
-        is_occupied = yoomoney_result['exists'] or yandex_pay_result['exists']
+        # ЗАНЯТ если есть хотя бы один из сервисов
+        is_occupied = (
+            yandex_id_result['exists'] or 
+            yoomoney_result['exists'] or 
+            yandex_pay_result['exists']
+        )
         
-        # Если Yandex Pay точно есть — приоритет ему
+        # Формируем сообщение
+        services = []
+        if yandex_id_result['exists']:
+            services.append('Yandex ID')
+        if yoomoney_result['exists']:
+            services.append('ЮMoney')
         if yandex_pay_result['exists']:
-            final_status = 'occupied'
-            final_message = 'Yandex Pay карта существует'
-        elif yoomoney_result['exists']:
-            final_status = 'occupied'
-            final_message = 'ЮMoney кошелёк существует'
+            services.append('Yandex Pay')
+        
+        if services:
+            final_message = f"Найдены: {', '.join(services)}"
         else:
-            final_status = 'clean'
             final_message = 'Чистый номер'
         
         return {
             'phone': normalized,
             'exists': is_occupied,
-            'status': final_status,
+            'status': 'occupied' if is_occupied else 'clean',
             'message': final_message,
+            'yandex_id': yandex_id_result,
             'yoomoney': yoomoney_result,
             'yandex_pay': yandex_pay_result,
             'raw': {
+                'yandex_id': yandex_id_result.get('raw', {}),
                 'yoomoney': yoomoney_result.get('raw', {}),
                 'yandex_pay': yandex_pay_result.get('raw', {})
             }
@@ -268,10 +306,12 @@ def check_phone():
     return jsonify({
         'phone': result['phone'],
         'is_clean': not result['exists'],
+        'has_yandex_id': result['yandex_id']['exists'],
         'has_yoomoney': result['yoomoney']['exists'],
         'has_yandex_pay': result['yandex_pay']['exists'],
         'status': result['status'],
         'message': result['message'],
+        'yandex_id_message': result['yandex_id']['message'],
         'yoomoney_message': result['yoomoney']['message'],
         'yandex_pay_message': result['yandex_pay']['message'],
         'debug': result['raw']
@@ -287,10 +327,12 @@ def check_batch():
         results.append({
             'phone': result['phone'],
             'is_clean': not result['exists'],
+            'has_yandex_id': result['yandex_id']['exists'],
             'has_yoomoney': result['yoomoney']['exists'],
             'has_yandex_pay': result['yandex_pay']['exists'],
             'status': result['status'],
             'message': result['message'],
+            'yandex_id_message': result['yandex_id']['message'],
             'yoomoney_message': result['yoomoney']['message'],
             'yandex_pay_message': result['yandex_pay']['message'],
             'debug': result['raw']
