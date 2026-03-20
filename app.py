@@ -29,7 +29,6 @@ class YandexPayChecker:
         return '+' + digits
     
     def check_yoomoney(self, phone):
-        """Проверка кошелька ЮMoney"""
         normalized = self.normalize_phone(phone)
         
         try:
@@ -95,13 +94,9 @@ class YandexPayChecker:
             }
     
     def check_yandex_id(self, phone):
-        """
-        Проверка Yandex ID (аккаунта Яндекса) по номеру телефона
-        """
         normalized = self.normalize_phone(phone)
         
         try:
-            # Метод 1: Проверка через API паспорта (регистрация)
             url = "https://passport.yandex.ru/registration/validations/phone"
             
             headers = {
@@ -122,170 +117,148 @@ class YandexPayChecker:
             response = self.session.post(url, data=data, headers=headers, timeout=10)
             result = response.json() if response.text else {}
             
-            # Если номер уже занят (привязан к аккаунту)
+            # Проверяем ошибки
             if result.get('status') == 'error':
                 errors = result.get('errors', {})
-                if 'phone' in errors and 'occupied' in str(errors['phone']):
+                phone_errors = errors.get('phone', {})
+                error_code = phone_errors.get('code', '')
+                
+                block_indicators = ['blocked', 'fraud', 'limit_exceeded', 'restricted']
+                is_blocked = any(ind in error_code.lower() for ind in block_indicators)
+                
+                if is_blocked:
                     return {
                         'exists': True,
+                        'blocked': True,
+                        'block_reason': error_code,
+                        'status': 'blocked',
+                        'message': f'Номер заблокирован: {error_code}',
+                        'raw': result
+                    }
+                
+                if 'occupied' in str(phone_errors):
+                    return {
+                        'exists': True,
+                        'blocked': False,
                         'status': 'occupied',
-                        'message': 'Yandex ID существует (номер занят)',
+                        'message': 'Yandex ID существует',
                         'raw': result
                     }
             
-            # Метод 2: Проверка через API account information
+            # Проверка через accountInformation
             url2 = "https://passport.yandex.ru/registration/validations/accountInformation"
             response2 = self.session.post(url2, data={'phone': normalized}, headers=headers, timeout=10)
             result2 = response2.json() if response2.text else {}
             
-            # Если аккаунт существует (есть login)
             if result2.get('status') == 'ok' or result2.get('login'):
                 return {
                     'exists': True,
+                    'blocked': False,
                     'status': 'occupied',
                     'message': 'Yandex ID найден',
-                    'raw': result2
-                }
-            
-            # Метод 3: Проверка через API восстановления пароля
-            url3 = "https://passport.yandex.ru/restoration/login-or-phone"
-            response3 = self.session.post(url3, data={'phone': normalized}, headers=headers, timeout=10)
-            result3 = response3.json() if response3.text else {}
-            
-            if result3.get('status') == 'ok' or result3.get('logins'):
-                return {
-                    'exists': True,
-                    'status': 'occupied',
-                    'message': 'Yandex ID найден (через восстановление)',
-                    'raw': result3
+                    'raw': {
+                        'validation': result,
+                        'account_info': result2
+                    }
                 }
             
             return {
                 'exists': False,
+                'blocked': False,
                 'status': 'clean',
                 'message': 'Yandex ID не найден',
                 'raw': {
                     'validation': result,
-                    'account_info': result2,
-                    'restoration': result3
+                    'account_info': result2
                 }
             }
             
         except Exception as e:
             return {
                 'exists': False,
+                'blocked': False,
                 'status': 'error',
                 'message': f'Ошибка проверки: {str(e)}',
                 'raw': {}
             }
     
-    def check_yandex_pay(self, phone):
+    def check_card_eligibility(self, phone):
         """
-        Проверка Yandex Pay карты
+        Проверка возможности открытия карты Yandex Pay
         """
         normalized = self.normalize_phone(phone)
         
-        try:
-            # Проверяем через API Yandex Pay
-            url = "https://pay.yandex.ru/api/v1/phone/check"
-            
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Accept': 'application/json',
-                'Accept-Language': 'ru-RU,ru;q=0.9',
-                'Content-Type': 'application/json',
-                'Origin': 'https://pay.yandex.ru',
-                'Referer': 'https://pay.yandex.ru/',
+        # Собираем все признаки
+        yandex_id = self.check_yandex_id(phone)
+        yoomoney = self.check_yoomoney(phone)
+        
+        eligibility = {
+            'can_open_card': True,
+            'risk_level': 'low',
+            'risk_score': 0,
+            'warnings': [],
+            'recommendation': '',
+            'details': {
+                'yandex_id_exists': yandex_id['exists'],
+                'yandex_id_blocked': yandex_id.get('blocked', False),
+                'yoomoney_exists': yoomoney['exists'],
+                'clean_slate': not yandex_id['exists'] and not yoomoney['exists']
             }
-            
-            data = {
-                'phone': normalized,
-                'type': 'card_check'
-            }
-            
-            response = self.session.post(url, json=data, headers=headers, timeout=10)
-            result = response.json() if response.text else {}
-            
-            # Если Yandex ID существует, проверяем есть ли карта
-            yandex_id = self.check_yandex_id(phone)
-            
-            # Если аккаунт есть, предполагаем что может быть карта
-            # (точная проверка требует авторизации)
-            if yandex_id['exists']:
-                return {
-                    'exists': True,  # Предполагаем наличие
-                    'status': 'occupied',
-                    'message': 'Возможна Yandex Pay карта (аккаунт существует)',
-                    'raw': {
-                        'pay_api': result,
-                        'yandex_id': yandex_id
-                    }
-                }
-            
-            return {
-                'exists': False,
-                'status': 'clean',
-                'message': 'Yandex Pay карты нет (нет аккаунта)',
-                'raw': {
-                    'pay_api': result,
-                    'yandex_id': yandex_id
-                }
-            }
-            
-        except Exception as e:
-            yandex_id = self.check_yandex_id(phone)
-            return {
-                'exists': yandex_id.get('exists', False),
-                'status': 'error' if not yandex_id.get('exists') else 'occupied',
-                'message': 'Проверка через Yandex ID',
-                'raw': {'error': str(e), 'yandex_id': yandex_id}
-            }
+        }
+        
+        # Факторы риска
+        if yandex_id.get('blocked'):
+            eligibility['can_open_card'] = False
+            eligibility['risk_level'] = 'blocked'
+            eligibility['risk_score'] = 100
+            eligibility['warnings'].append(f"Номер заблокирован: {yandex_id.get('block_reason', 'неизвестно')}")
+        
+        if yandex_id['exists'] and yoomoney['exists']:
+            eligibility['risk_score'] += 30
+            eligibility['warnings'].append("Есть и Yandex ID, и ЮMoney — возможно, старый аккаунт")
+        
+        # Определяем рекомендацию
+        if eligibility['risk_level'] == 'blocked':
+            eligibility['recommendation'] = "❌ НЕ ПОКУПАТЬ: номер в блоке Яндекса"
+        elif eligibility['details']['clean_slate']:
+            eligibility['recommendation'] = "✅ ОТЛИЧНО: чистый номер, идеален для новой карты"
+        elif not yandex_id['exists'] and not yoomoney['exists']:
+            eligibility['recommendation'] = "✅ ХОРОШО: можно регистрировать новый аккаунт"
+        elif yandex_id['exists'] and not yandex_id.get('blocked'):
+            eligibility['risk_score'] += 20
+            eligibility['risk_level'] = 'medium'
+            eligibility['recommendation'] = "⚠️ СРЕДНИЙ РИСК: аккаунт существует, нужна проверка"
+        else:
+            eligibility['recommendation'] = "ℹ️ ТРЕБУЕТ ВНИМАНИЯ: неоднозначная ситуация"
+        
+        # Итоговый риск
+        if eligibility['risk_score'] >= 70:
+            eligibility['risk_level'] = 'high'
+        elif eligibility['risk_score'] >= 30:
+            eligibility['risk_level'] = 'medium'
+        
+        return eligibility
     
     def check_wallet_exists(self, phone):
-        """
-        Комплексная проверка: Yandex ID + ЮMoney + Yandex Pay
-        """
         normalized = self.normalize_phone(phone)
         
-        # Проверяем все три сервиса
-        yandex_id_result = self.check_yandex_id(phone)
-        yoomoney_result = self.check_yoomoney(phone)
-        yandex_pay_result = self.check_yandex_pay(phone)
+        yandex_id = self.check_yandex_id(phone)
+        yoomoney = self.check_yoomoney(phone)
+        eligibility = self.check_card_eligibility(phone)
         
-        # Определяем общий статус
-        # ЗАНЯТ если есть хотя бы один из сервисов
-        is_occupied = (
-            yandex_id_result['exists'] or 
-            yoomoney_result['exists'] or 
-            yandex_pay_result['exists']
-        )
-        
-        # Формируем сообщение
-        services = []
-        if yandex_id_result['exists']:
-            services.append('Yandex ID')
-        if yoomoney_result['exists']:
-            services.append('ЮMoney')
-        if yandex_pay_result['exists']:
-            services.append('Yandex Pay')
-        
-        if services:
-            final_message = f"Найдены: {', '.join(services)}"
-        else:
-            final_message = 'Чистый номер'
+        is_occupied = yandex_id['exists'] or yoomoney['exists'] or yandex_id.get('blocked', False)
         
         return {
             'phone': normalized,
             'exists': is_occupied,
-            'status': 'occupied' if is_occupied else 'clean',
-            'message': final_message,
-            'yandex_id': yandex_id_result,
-            'yoomoney': yoomoney_result,
-            'yandex_pay': yandex_pay_result,
+            'blocked': yandex_id.get('blocked', False),
+            'status': 'blocked' if yandex_id.get('blocked') else ('occupied' if is_occupied else 'clean'),
+            'eligibility': eligibility,
+            'yandex_id': yandex_id,
+            'yoomoney': yoomoney,
             'raw': {
-                'yandex_id': yandex_id_result.get('raw', {}),
-                'yoomoney': yoomoney_result.get('raw', {}),
-                'yandex_pay': yandex_pay_result.get('raw', {})
+                'yandex_id': yandex_id.get('raw', {}),
+                'yoomoney': yoomoney.get('raw', {})
             }
         }
 
@@ -306,14 +279,18 @@ def check_phone():
     return jsonify({
         'phone': result['phone'],
         'is_clean': not result['exists'],
+        'is_blocked': result['blocked'],
+        'can_open_card': result['eligibility']['can_open_card'],
+        'risk_level': result['eligibility']['risk_level'],
+        'risk_score': result['eligibility']['risk_score'],
+        'recommendation': result['eligibility']['recommendation'],
         'has_yandex_id': result['yandex_id']['exists'],
         'has_yoomoney': result['yoomoney']['exists'],
-        'has_yandex_pay': result['yandex_pay']['exists'],
+        'warnings': result['eligibility']['warnings'],
+        'details': result['eligibility']['details'],
         'status': result['status'],
-        'message': result['message'],
-        'yandex_id_message': result['yandex_id']['message'],
+        'message': result['yandex_id']['message'],
         'yoomoney_message': result['yoomoney']['message'],
-        'yandex_pay_message': result['yandex_pay']['message'],
         'debug': result['raw']
     })
 
@@ -327,24 +304,30 @@ def check_batch():
         results.append({
             'phone': result['phone'],
             'is_clean': not result['exists'],
+            'is_blocked': result['blocked'],
+            'can_open_card': result['eligibility']['can_open_card'],
+            'risk_level': result['eligibility']['risk_level'],
+            'risk_score': result['eligibility']['risk_score'],
+            'recommendation': result['eligibility']['recommendation'],
             'has_yandex_id': result['yandex_id']['exists'],
             'has_yoomoney': result['yoomoney']['exists'],
-            'has_yandex_pay': result['yandex_pay']['exists'],
+            'warnings': result['eligibility']['warnings'],
+            'details': result['eligibility']['details'],
             'status': result['status'],
-            'message': result['message'],
-            'yandex_id_message': result['yandex_id']['message'],
+            'message': result['yandex_id']['message'],
             'yoomoney_message': result['yoomoney']['message'],
-            'yandex_pay_message': result['yandex_pay']['message'],
             'debug': result['raw']
         })
     
     clean_count = sum(1 for r in results if r.get('is_clean') is True)
-    occupied_count = sum(1 for r in results if r.get('is_clean') is False)
+    blocked_count = sum(1 for r in results if r.get('is_blocked') is True)
+    risky_count = sum(1 for r in results if r.get('risk_level') in ['medium', 'high'])
     
     return jsonify({
         'total': len(results),
         'clean': clean_count,
-        'occupied': occupied_count,
+        'blocked': blocked_count,
+        'risky': risky_count,
         'results': results
     })
 
