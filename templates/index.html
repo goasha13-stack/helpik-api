@@ -3,189 +3,437 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Helpik</title>
+    <title>Helpik - Проверка номеров + Yandex Pay</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
         body { 
-            background: #f5f5f5;
-            min-height: 100vh;
-            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            min-height: 100vh; 
+            padding: 40px 20px;
         }
         .container { 
-            max-width: 800px; 
+            max-width: 900px; 
             margin: 0 auto; 
             background: white; 
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 20px; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
         }
         .header { 
-            background: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 20px;
+            padding: 30px;
             text-align: center;
         }
-        .header h1 { font-size: 24px; }
+        .header h1 { font-size: 32px; margin-bottom: 10px; }
+        .header p { opacity: 0.9; font-size: 16px; }
         
-        .content { padding: 20px; }
+        .content { padding: 30px; }
+        
+        .input-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+            font-size: 14px;
+        }
         
         textarea {
             width: 100%;
             padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
             resize: vertical;
-            min-height: 100px;
+            min-height: 120px;
             font-family: monospace;
-            margin-bottom: 15px;
         }
         
         textarea:focus {
             outline: none;
-            border-color: #333;
+            border-color: #667eea;
+        }
+        
+        .checkbox-wrapper {
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .checkbox-wrapper input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .checkbox-wrapper label {
+            margin: 0;
+            cursor: pointer;
+            font-weight: normal;
         }
         
         .btn {
-            background: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            padding: 12px 24px;
-            border-radius: 4px;
-            font-size: 14px;
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
+            transition: all 0.3s;
             width: 100%;
         }
         
         .btn:hover {
-            background: #555;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
         }
         
         .btn:disabled {
-            background: #999;
+            opacity: 0.6;
             cursor: not-allowed;
+            transform: none;
         }
         
-        .results {
-            margin-top: 20px;
-        }
+        .results { margin-top: 20px; }
         
         .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px 10px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 28px;
+            font-weight: 700;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        .phone-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+        
+        .phone-card.clean { border-color: #28a745; background: #d4edda; }
+        .phone-card.occupied { border-color: #ffc107; background: #fff3cd; }
+        .phone-card.blocked { border-color: #dc3545; background: #f8d7da; }
+        .phone-card.has-data { border-color: #17a2b8; background: #d1ecf1; }
+        .phone-card.has-pay { border-color: #6f42c1; background: #e2d4f0; }
+        
+        .phone-header {
             display: flex;
-            gap: 15px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
         }
         
-        .stat {
-            background: #f0f0f0;
-            padding: 10px 15px;
-            border-radius: 4px;
-            font-size: 13px;
+        .phone-number {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
         }
         
-        .output-box {
-            background: #f8f8f8;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            padding: 15px;
-            font-family: monospace;
-            font-size: 13px;
-            line-height: 1.6;
-            white-space: pre-wrap;
-            word-break: break-all;
-            margin-bottom: 15px;
+        .badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
         }
         
-        .result-line {
-            padding: 4px 0;
-            border-bottom: 1px solid #eee;
-        }
+        .badge.clean { background: #28a745; color: white; }
+        .badge.occupied { background: #ffc107; color: #333; }
+        .badge.blocked { background: #dc3545; color: white; }
+        .badge.has-data { background: #17a2b8; color: white; }
+        .badge.has-pay { background: #6f42c1; color: white; }
         
-        .result-line:last-child {
-            border-bottom: none;
-        }
-        
-        .clean { color: #28a745; }
-        .blocked { color: #dc3545; }
-        .warning { color: #ffc107; }
-        .pay { color: #6f42c1; }
-        
-        .download-btn {
-            background: #28a745;
+        .birth-date-box {
+            margin: 15px 0;
+            padding: 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            text-align: center;
             color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            font-size: 13px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
+            position: relative;
+            overflow: hidden;
         }
         
-        .download-btn:hover {
-            background: #218838;
+        .birth-date-box::before {
+            content: '🎂';
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 40px;
+            opacity: 0.3;
+        }
+        
+        .birth-date-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+        
+        .birth-date-value {
+            font-size: 36px;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .birth-date-name {
+            font-size: 18px;
+            margin-top: 10px;
+            font-weight: 500;
+        }
+        
+        .yandex-pay-box {
+            margin: 15px 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #6f42c1 0%, #764ba2 100%);
+            border-radius: 12px;
+            text-align: center;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .yandex-pay-box::before {
+            content: '💳';
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 40px;
+            opacity: 0.3;
+        }
+        
+        .yandex-pay-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+        
+        .yandex-pay-status {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        
+        .yandex-pay-verified {
+            font-size: 14px;
+            margin-top: 8px;
+            background: rgba(255,255,255,0.2);
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+        
+        .service-status {
+            font-size: 14px;
+            color: #666;
+            margin-top: 15px;
+            line-height: 1.6;
+        }
+        
+        .service-status .service-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            padding: 4px 0;
+        }
+        
+        .service-status .icon {
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+        }
+        
+        .recommendation {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
         }
         
         .loading {
             text-align: center;
-            padding: 20px;
+            padding: 40px;
             display: none;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .help-text {
+            background: #e7f3ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 0 8px 8px 0;
+            font-size: 14px;
+            color: #555;
+        }
+        
+        .warning-text {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 0 8px 8px 0;
+            font-size: 13px;
+            color: #856404;
+        }
+        
+        .debug-info {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 11px;
+            font-family: monospace;
             color: #666;
+            word-break: break-all;
+        }
+        
+        .debug-info summary {
+            cursor: pointer;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .debug-content {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #dee2e6;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        @media (max-width: 768px) {
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .birth-date-value {
+                font-size: 28px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Helpik</h1>
+            <h1>🔍 Helpik</h1>
+            <p>Проверка: Госуслуги + Yandex Pay + ЮMoney + Yandex ID</p>
         </div>
         
         <div class="content">
-            <textarea id="phones" placeholder="79113725286&#10;79222909198&#10;79222991829"></textarea>
-            <button class="btn" onclick="checkPhones()" id="checkBtn">Проверить номера</button>
+            <div class="help-text">
+                <strong>Введите номера телефонов</strong> (по одному на строке). 
+                Система проверит все сервисы Яндекса и Госуслуги.
+            </div>
+            
+            <div class="warning-text">
+                ⚠️ Selenium режим: медленнее, но даёт полную дату ДД.ММ.ГГГГ из Госуслуг.
+            </div>
+            
+            <div class="input-section">
+                <label for="phones">Номера телефонов:</label>
+                <textarea id="phones" placeholder="+79001234567&#10;89113725286&#10;+79326371319"></textarea>
+                
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" id="useSelenium" checked>
+                    <label for="useSelenium">Использовать Selenium (полная дата рождения)</label>
+                </div>
+                
+                <button class="btn" onclick="checkPhones()" id="checkBtn">Проверить номера</button>
+            </div>
             
             <div class="loading" id="loading">
-                Проверяем... <span id="progress"></span>
+                <div class="spinner"></div>
+                <p id="loadingText">Проверяем номера...</p>
             </div>
             
-            <div class="results" id="results" style="display: none;">
-                <div class="stats" id="stats"></div>
-                <div class="output-box" id="output"></div>
-                <button class="download-btn" onclick="downloadTxt()">Сохранить в .txt</button>
-            </div>
+            <div class="results" id="results"></div>
         </div>
     </div>
 
     <script>
-        let currentOutput = '';
-        
         async function checkPhones() {
             const textarea = document.getElementById('phones');
             const btn = document.getElementById('checkBtn');
             const loading = document.getElementById('loading');
-            const progress = document.getElementById('progress');
+            const loadingText = document.getElementById('loadingText');
             const results = document.getElementById('results');
-            const output = document.getElementById('output');
-            const stats = document.getElementById('stats');
+            const useSelenium = document.getElementById('useSelenium').checked;
             
             const phones = textarea.value.split('\n').filter(p => p.trim());
             
             if (phones.length === 0) {
-                alert('Введите номера');
+                alert('Введите хотя бы один номер');
                 return;
             }
             
             btn.disabled = true;
             loading.style.display = 'block';
-            results.style.display = 'none';
+            results.innerHTML = '';
+            
+            if (useSelenium) {
+                loadingText.textContent = `Проверяем ${phones.length} номер(ов)... (~${phones.length * 15} сек)`;
+            }
             
             try {
-                progress.textContent = `(0/${phones.length})`;
-                
                 const response = await fetch('/api/check-batch', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phones: phones })
+                    body: JSON.stringify({ 
+                        phones: phones,
+                        use_selenium: useSelenium
+                    })
                 });
                 
                 const data = await response.json();
@@ -194,54 +442,143 @@
                     throw new Error(data.error);
                 }
                 
-                // Форматируем вывод
-                const lines = data.results.map(r => {
-                    let cssClass = '';
-                    if (r.status === 'clean') cssClass = 'clean';
-                    else if (r.status === 'blocked') cssClass = 'blocked';
-                    else if (r.status === 'pay_with_date') cssClass = 'pay';
-                    else if (r.status === 'unknown') cssClass = 'warning';
-                    
-                    return `<div class="result-line ${cssClass}">${r.formatted}</div>`;
-                }).join('');
-                
-                output.innerHTML = lines;
-                currentOutput = data.text_output;
-                
-                // Статистика
-                const clean = data.results.filter(r => r.status === 'clean').length;
-                const withPay = data.results.filter(r => r.pay).length;
-                const blocked = data.results.filter(r => r.blocked).length;
-                
-                stats.innerHTML = `
-                    <div class="stat">Всего: ${data.total}</div>
-                    <div class="stat">Чистых: ${clean}</div>
-                    <div class="stat">С Pay: ${withPay}</div>
-                    <div class="stat">Блок: ${blocked}</div>
+                const statsHtml = `
+                    <div class="stats">
+                        <div class="stat-card">
+                            <div class="stat-number">${data.total}</div>
+                            <div class="stat-label">Всего</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" style="color: #28a745;">${data.clean}</div>
+                            <div class="stat-label">Чистые</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" style="color: #6f42c1;">${data.with_yandex_pay || 0}</div>
+                            <div class="stat-label">Yandex Pay</div>
+                        </div>
+                    </div>
                 `;
                 
-                results.style.display = 'block';
+                const phonesHtml = data.results.map(r => {
+                    let cardClass = 'clean';
+                    let badgeClass = 'clean';
+                    let badgeText = '✅ ЧИСТЫЙ';
+                    
+                    if (r.is_blocked) {
+                        cardClass = 'blocked';
+                        badgeClass = 'blocked';
+                        badgeText = '❌ БЛОК';
+                    } else if (r.has_yandex_pay) {
+                        cardClass = 'has-pay';
+                        badgeClass = 'has-pay';
+                        badgeText = '💳 YANDEX PAY';
+                    } else if (r.birth_date && r.birth_date.day) {
+                        cardClass = 'has-data';
+                        badgeClass = 'has-data';
+                        badgeText = '🎂 ДАТА НАЙДЕНА';
+                    } else if (r.has_gosuslugi) {
+                        cardClass = 'has-data';
+                        badgeClass = 'has-data';
+                        badgeText = '📋 ГОСУСЛУГИ';
+                    } else if (!r.is_clean) {
+                        cardClass = 'occupied';
+                        badgeClass = 'occupied';
+                        badgeText = '⚠️ ЗАНЯТ';
+                    }
+                    
+                    // Yandex Pay блок
+                    let yandexPayHtml = '';
+                    if (r.has_yandex_pay) {
+                        yandexPayHtml = `
+                            <div class="yandex-pay-box">
+                                <div class="yandex-pay-label">Yandex Pay</div>
+                                <div class="yandex-pay-status">КАРТА ЕСТЬ</div>
+                                <div class="yandex-pay-verified">${r.yandex_pay_verified ? '✓ Верифицирована' : '✗ Не верифицирована'}</div>
+                            </div>
+                        `;
+                    }
+                    
+                    // Дата рождения блок
+                    let birthDateHtml = '';
+                    if (r.birth_date && r.birth_date.day && r.birth_date.month && r.birth_date.year) {
+                        birthDateHtml = `
+                            <div class="birth-date-box">
+                                <div class="birth-date-label">Дата рождения</div>
+                                <div class="birth-date-value">${r.birth_date.formatted}</div>
+                                ${r.gosuslugi_name ? `<div class="birth-date-name">${r.gosuslugi_name}</div>` : ''}
+                            </div>
+                        `;
+                    }
+                    
+                    const gosuslugiIcon = r.has_gosuslugi ? (r.birth_date?.day ? '🎂' : '📋') : '❌';
+                    const yandexIdIcon = r.yandex_blocked ? '🚫' : (r.has_yandex_id ? '⚠️' : '✅');
+                    const yoomoneyIcon = r.has_yoomoney ? '💰' : '✅';
+                    const yandexPayIcon = r.has_yandex_pay ? '💳' : '✅';
+                    
+                    return `
+                    <div class="phone-card ${cardClass}">
+                        <div class="phone-header">
+                            <span class="phone-number">${r.phone}</span>
+                            <span class="badge ${badgeClass}">${badgeText}</span>
+                        </div>
+                        
+                        ${yandexPayHtml}
+                        ${birthDateHtml}
+                        
+                        <div class="service-status">
+                            <div class="service-item">
+                                <span class="icon">${yandexPayIcon}</span>
+                                <span>Yandex Pay: ${r.has_yandex_pay ? (r.yandex_pay_verified ? 'есть (вериф.)' : 'есть (не вериф.)') : 'нет'}</span>
+                            </div>
+                            <div class="service-item">
+                                <span class="icon">${gosuslugiIcon}</span>
+                                <span>Госуслуги: ${r.has_gosuslugi ? (r.birth_date?.day ? 'дата найдена' : 'найдены') : 'не найдены'}</span>
+                            </div>
+                            <div class="service-item">
+                                <span class="icon">${yandexIdIcon}</span>
+                                <span>Yandex ID: ${r.yandex_blocked ? 'заблокирован' : (r.has_yandex_id ? 'есть' : 'нет')}</span>
+                            </div>
+                            <div class="service-item">
+                                <span class="icon">${yoomoneyIcon}</span>
+                                <span>ЮMoney: ${r.has_yoomoney ? 'есть' : 'нет'}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="recommendation" style="background: ${r.is_blocked ? '#f8d7da' : (r.has_yandex_pay ? '#e2d4f0' : (r.birth_date?.day ? '#d1ecf1' : (r.is_clean ? '#d4edda' : '#fff3cd')))}; color: ${r.is_blocked ? '#721c24' : (r.has_yandex_pay ? '#4a2c7a' : (r.birth_date?.day ? '#0c5460' : (r.is_clean ? '#155724' : '#856404')))};">
+                            ${r.recommendation}
+                        </div>
+                        
+                        ${r.debug ? `
+                        <details class="debug-info">
+                            <summary>🔧 Debug</summary>
+                            <div class="debug-content">
+                                <strong>Yandex Pay:</strong><br>
+                                ${JSON.stringify(r.debug.yandex_pay, null, 2)}<br>
+                                <hr style="margin: 8px 0;">
+                                <strong>Госуслуги:</strong><br>
+                                ${JSON.stringify(r.debug.gosuslugi, null, 2)}<br>
+                                <hr style="margin: 8px 0;">
+                                <strong>Yandex ID:</strong><br>
+                                ${JSON.stringify(r.debug.yandex_id, null, 2)}<br>
+                                <hr style="margin: 8px 0;">
+                                <strong>ЮMoney:</strong><br>
+                                ${JSON.stringify(r.debug.yoomoney, null, 2)}
+                            </div>
+                        </details>
+                        ` : ''}
+                    </div>
+                `}).join('');
+                
+                results.innerHTML = statsHtml + phonesHtml;
+                
+                await fetch('/api/close-driver', {method: 'POST'});
                 
             } catch (error) {
-                alert('Ошибка: ' + error.message);
+                results.innerHTML = `<div style="color: #dc3545; text-align: center; padding: 20px;">Ошибка: ${error.message}</div>`;
             }
             
             loading.style.display = 'none';
             btn.disabled = false;
-        }
-        
-        function downloadTxt() {
-            if (!currentOutput) return;
-            
-            const blob = new Blob([currentOutput], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'helpik_results_' + new Date().toISOString().slice(0,10) + '.txt';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
         }
     </script>
 </body>
