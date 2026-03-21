@@ -3,57 +3,194 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Helpik - Проверка номеров + Yandex Pay</title>
+    <title>Helpik - Проверка номеров</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+        
         body { 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            min-height: 100vh; 
-            padding: 40px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
         }
+        
         .container { 
             max-width: 900px; 
             margin: 0 auto; 
             background: white; 
-            border-radius: 20px; 
+            border-radius: 12px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             overflow: hidden;
         }
+        
         .header { 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #333 0%, #555 100%);
             color: white;
             padding: 30px;
             text-align: center;
         }
-        .header h1 { font-size: 32px; margin-bottom: 10px; }
-        .header p { opacity: 0.9; font-size: 16px; }
+        
+        .header h1 { 
+            font-size: 28px; 
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
         
         .content { padding: 30px; }
         
-        .input-section {
+        /* Панель логики */
+        .logic-panel {
             background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
             padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
         }
         
-        label {
+        .logic-panel h3 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .logic-toggle {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .logic-content {
+            display: none;
+            margin-top: 15px;
+        }
+        
+        .logic-content.active {
+            display: block;
+        }
+        
+        .status-legend {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 10px;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            border-left: 4px solid;
+        }
+        
+        .status-item.clean { border-left-color: #28a745; }
+        .status-item.pay_verif { border-left-color: #28a745; }
+        .status-item.pay_no_verif { border-left-color: #ffc107; }
+        .status-item.blocked { border-left-color: #dc3545; }
+        .status-item.id_no_pay { border-left-color: #6c757d; }
+        
+        .status-icon {
+            font-size: 20px;
+        }
+        
+        .status-text {
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        .status-text strong {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 2px;
+        }
+        
+        /* Параметры проверки */
+        .params-info {
+            background: #e3f2fd;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+            font-size: 13px;
+        }
+        
+        .params-info h4 {
+            margin-bottom: 10px;
+            color: #1976d2;
+        }
+        
+        .params-info ul {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+        
+        .params-info code {
+            background: #fff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        
+        .logic-note {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin-top: 15px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        .logic-note strong {
+            color: #856404;
+        }
+        
+        .birth-date-rule {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 12px;
+            margin-top: 15px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        .birth-date-rule strong {
+            color: #155724;
+        }
+        
+        /* Основная форма */
+        .input-section {
+            margin-bottom: 25px;
+        }
+        
+        .input-label {
             display: block;
             margin-bottom: 8px;
-            color: #555;
             font-weight: 600;
+            color: #333;
             font-size: 14px;
         }
         
         textarea {
             width: 100%;
-            padding: 12px;
+            padding: 15px;
             border: 2px solid #e0e0e0;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 14px;
             resize: vertical;
             min-height: 120px;
             font-family: monospace;
+            transition: border-color 0.3s;
         }
         
         textarea:focus {
@@ -61,36 +198,21 @@
             border-color: #667eea;
         }
         
-        .checkbox-wrapper {
-            margin: 15px 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .checkbox-wrapper input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-        }
-        
-        .checkbox-wrapper label {
-            margin: 0;
-            cursor: pointer;
-            font-weight: normal;
+        textarea::placeholder {
+            color: #aaa;
         }
         
         .btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            padding: 14px 32px;
+            padding: 15px 30px;
             border-radius: 8px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
             width: 100%;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
         
         .btn:hover {
@@ -99,198 +221,21 @@
         }
         
         .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
+            background: #ccc;
             transform: none;
+            box-shadow: none;
+            cursor: not-allowed;
         }
         
-        .results { margin-top: 20px; }
-        
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        
-        .stat-card {
-            background: #f8f9fa;
-            padding: 15px 10px;
-            border-radius: 12px;
-            text-align: center;
-        }
-        
-        .stat-number {
-            font-size: 28px;
-            font-weight: 700;
-            color: #667eea;
-        }
-        
-        .stat-label {
-            color: #666;
-            font-size: 12px;
-            margin-top: 5px;
-        }
-        
-        .phone-card {
-            background: white;
-            border: 2px solid #e0e0e0;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 15px;
-            transition: all 0.3s;
-        }
-        
-        .phone-card.clean { border-color: #28a745; background: #d4edda; }
-        .phone-card.occupied { border-color: #ffc107; background: #fff3cd; }
-        .phone-card.blocked { border-color: #dc3545; background: #f8d7da; }
-        .phone-card.has-data { border-color: #17a2b8; background: #d1ecf1; }
-        .phone-card.has-pay { border-color: #6f42c1; background: #e2d4f0; }
-        
-        .phone-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        
-        .phone-number {
-            font-size: 18px;
-            font-weight: 600;
-            color: #333;
-        }
-        
-        .badge {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        
-        .badge.clean { background: #28a745; color: white; }
-        .badge.occupied { background: #ffc107; color: #333; }
-        .badge.blocked { background: #dc3545; color: white; }
-        .badge.has-data { background: #17a2b8; color: white; }
-        .badge.has-pay { background: #6f42c1; color: white; }
-        
-        .birth-date-box {
-            margin: 15px 0;
-            padding: 25px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 12px;
-            text-align: center;
-            color: white;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .birth-date-box::before {
-            content: '🎂';
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            font-size: 40px;
-            opacity: 0.3;
-        }
-        
-        .birth-date-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            opacity: 0.9;
-            margin-bottom: 8px;
-        }
-        
-        .birth-date-value {
-            font-size: 36px;
-            font-weight: 700;
-            font-family: 'Courier New', monospace;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-        
-        .birth-date-name {
-            font-size: 18px;
-            margin-top: 10px;
-            font-weight: 500;
-        }
-        
-        .yandex-pay-box {
-            margin: 15px 0;
-            padding: 20px;
-            background: linear-gradient(135deg, #6f42c1 0%, #764ba2 100%);
-            border-radius: 12px;
-            text-align: center;
-            color: white;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .yandex-pay-box::before {
-            content: '💳';
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            font-size: 40px;
-            opacity: 0.3;
-        }
-        
-        .yandex-pay-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            opacity: 0.9;
-            margin-bottom: 8px;
-        }
-        
-        .yandex-pay-status {
-            font-size: 24px;
-            font-weight: 700;
-        }
-        
-        .yandex-pay-verified {
-            font-size: 14px;
-            margin-top: 8px;
-            background: rgba(255,255,255,0.2);
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-        }
-        
-        .service-status {
-            font-size: 14px;
-            color: #666;
-            margin-top: 15px;
-            line-height: 1.6;
-        }
-        
-        .service-status .service-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 6px;
-            padding: 4px 0;
-        }
-        
-        .service-status .icon {
-            font-size: 16px;
-            width: 20px;
-            text-align: center;
-        }
-        
-        .recommendation {
-            margin-top: 15px;
-            padding: 15px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            text-align: center;
-        }
-        
+        /* Загрузка */
         .loading {
             text-align: center;
             padding: 40px;
             display: none;
+        }
+        
+        .loading.active {
+            display: block;
         }
         
         .spinner {
@@ -308,108 +253,349 @@
             100% { transform: rotate(360deg); }
         }
         
-        .help-text {
-            background: #e7f3ff;
-            border-left: 4px solid #667eea;
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 0 8px 8px 0;
-            font-size: 14px;
-            color: #555;
-        }
-        
-        .warning-text {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 12px;
-            margin-bottom: 15px;
-            border-radius: 0 8px 8px 0;
-            font-size: 13px;
-            color: #856404;
-        }
-        
-        .debug-info {
-            margin-top: 15px;
-            padding: 10px;
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 6px;
-            font-size: 11px;
-            font-family: monospace;
+        .loading-text {
             color: #666;
-            word-break: break-all;
+            font-size: 16px;
         }
         
-        .debug-info summary {
-            cursor: pointer;
-            font-weight: 600;
-            color: #495057;
-        }
-        
-        .debug-content {
+        .progress {
             margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid #dee2e6;
-            max-height: 200px;
+            font-size: 14px;
+            color: #999;
+        }
+        
+        /* Результаты */
+        .results {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        .results.active {
+            display: block;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border-top: 3px solid;
+        }
+        
+        .stat-card.total { border-top-color: #6c757d; }
+        .stat-card.buy { border-top-color: #28a745; }
+        .stat-card.work { border-top-color: #ffc107; }
+        .stat-card.block { border-top-color: #dc3545; }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        /* Вывод результатов */
+        .output-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .output-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .output-box {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 13px;
+            line-height: 1.8;
+            max-height: 400px;
             overflow-y: auto;
         }
         
-        @media (max-width: 768px) {
-            .stats {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            .birth-date-value {
-                font-size: 28px;
-            }
+        .result-line {
+            padding: 8px;
+            margin: 4px 0;
+            border-radius: 4px;
+            transition: background 0.2s;
         }
+        
+        .result-line:hover {
+            background: #f0f0f0;
+        }
+        
+        .result-line.clean { 
+            background: #d4edda; 
+            border-left: 3px solid #28a745;
+        }
+        .result-line.pay_verif { 
+            background: #d4edda; 
+            border-left: 3px solid #28a745;
+        }
+        .result-line.pay_no_verif { 
+            background: #fff3cd; 
+            border-left: 3px solid #ffc107;
+        }
+        .result-line.blocked { 
+            background: #f8d7da; 
+            border-left: 3px solid #dc3545;
+        }
+        .result-line.id_no_pay { 
+            background: #e2e3e5; 
+            border-left: 3px solid #6c757d;
+        }
+        
+        .download-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .download-btn:hover {
+            background: #218838;
+        }
+        
+        /* Детальная таблица */
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 20px;
+        }
+        
+        .details-table th,
+        .details-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .details-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .details-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .badge.clean { background: #d4edda; color: #155724; }
+        .badge.pay_verif { background: #d4edda; color: #155724; }
+        .badge.pay_no_verif { background: #fff3cd; color: #856404; }
+        .badge.blocked { background: #f8d7da; color: #721c24; }
+        .badge.id_no_pay { background: #e2e3e5; color: #383d41; }
+        
+        .icon-yes { color: #28a745; }
+        .icon-no { color: #dc3545; }
+        .icon-stop { color: #dc3545; font-size: 16px; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>🔍 Helpik</h1>
-            <p>Проверка: Госуслуги + Yandex Pay + ЮMoney + Yandex ID</p>
+            <p>Проверка номеров для покупки: Yandex ID, Pay карта, верификация, блокировки</p>
         </div>
         
         <div class="content">
-            <div class="help-text">
-                <strong>Введите номера телефонов</strong> (по одному на строке). 
-                Система проверит все сервисы Яндекса и Госуслуги.
-            </div>
-            
-            <div class="warning-text">
-                ⚠️ Selenium режим: медленнее, но даёт полную дату ДД.ММ.ГГГГ из Госуслуг.
-            </div>
-            
-            <div class="input-section">
-                <label for="phones">Номера телефонов:</label>
-                <textarea id="phones" placeholder="+79001234567&#10;89113725286&#10;+79326371319"></textarea>
+            <!-- Панель логики -->
+            <div class="logic-panel">
+                <h3>
+                    📋 Логика проверки
+                    <button class="logic-toggle" onclick="toggleLogic()">Показать/скрыть</button>
+                </h3>
                 
-                <div class="checkbox-wrapper">
-                    <input type="checkbox" id="useSelenium" checked>
-                    <label for="useSelenium">Использовать Selenium (полная дата рождения)</label>
+                <div class="logic-content active" id="logicContent">
+                    <div class="status-legend">
+                        <div class="status-item clean">
+                            <span class="status-icon">✨</span>
+                            <div class="status-text">
+                                <strong>ЧИСТЫЙ (clean)</strong>
+                                Нет ID, нет Pay карты. Рекомендуем к покупке — идеальный номер
+                            </div>
+                        </div>
+                        
+                        <div class="status-item pay_verif">
+                            <span class="status-icon">✅</span>
+                            <div class="status-text">
+                                <strong>ХОРОШИЙ (pay_verif)</strong>
+                                Pay карта открыта + подтверждено в Госуслугах. Рекомендуем к покупке
+                            </div>
+                        </div>
+                        
+                        <div class="status-item pay_no_verif">
+                            <span class="status-icon">⚠️</span>
+                            <div class="status-text">
+                                <strong>НУЖНА ВЕРИФИКАЦИЯ (pay_no_verif)</strong>
+                                Pay карта есть, но Госуслуги не подтверждены. Купить можно, требуется верификация по дате рождения бывшего владельца
+                            </div>
+                        </div>
+                        
+                        <div class="status-item blocked">
+                            <span class="status-icon">🛑</span>
+                            <div class="status-text">
+                                <strong>СТОП (blocked)</strong>
+                                Номер заблокирован. НЕ ПОКУПАТЬ
+                            </div>
+                        </div>
+                        
+                        <div class="status-item id_no_pay">
+                            <span class="status-icon">❓</span>
+                            <div class="status-text">
+                                <strong>Только ID (id_no_pay)</strong>
+                                Есть аккаунт Яндекса, но нет Pay карты. Нейтральный статус
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="params-info">
+                        <h4>🔧 Параметры проверки:</h4>
+                        <ul>
+                            <li><code>id</code> — есть ли Yandex ID (аккаунт в Яндексе)</li>
+                            <li><code>pay</code> — есть ли открытая карта Yandex Pay</li>
+                            <li><code>гу</code> — подтверждено ли в Госуслугах (по наличию даты рождения)</li>
+                            <li><code>дд.мм.гггг</code> — дата рождения из Госуслуг (нужна для верификации)</li>
+                            <li><code>блок</code> — есть ли ограничения/блокировка на номере</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="logic-note">
+                        <strong>💡 Ключевое правило верификации:</strong><br>
+                        Верифицирован = Pay карта открыта + найдена дата рождения в Госуслугах.<br>
+                        Если Pay есть, но даты нет — значит при верификации была указана неверная дата или Госуслуги не подтверждены.<br>
+                        Дата рождения нужна для повторной верификации номера через Госуслуги.
+                    </div>
+                    
+                    <div class="birth-date-rule">
+                        <strong>📅 Правило поиска даты рождения:</strong><br>
+                        Дата рождения <strong>ищется для ВСЕХ номеров</strong>, кроме чистых (где нет ID и нет Pay).<br>
+                        То есть ищем дату если: есть Pay карта ИЛИ есть ID ИЛИ есть блокировка.<br>
+                        Дата нужна для всех не-чистых номеров — независимо от статуса верификации.
+                    </div>
                 </div>
-                
-                <button class="btn" onclick="checkPhones()" id="checkBtn">Проверить номера</button>
             </div>
             
+            <!-- Форма ввода -->
+            <div class="input-section">
+                <label class="input-label">Введите номера телефонов (по одному на строку):</label>
+                <textarea id="phones" placeholder="79113725286&#10;79222909198&#10;79222991829&#10;79222996301&#10;79133484680"></textarea>
+            </div>
+            
+            <button class="btn" onclick="checkPhones()" id="checkBtn">
+                🔍 Проверить номера
+            </button>
+            
+            <!-- Загрузка -->
             <div class="loading" id="loading">
                 <div class="spinner"></div>
-                <p id="loadingText">Проверяем номера...</p>
+                <div class="loading-text">Проверяем номера...</div>
+                <div class="progress" id="progress"></div>
             </div>
             
-            <div class="results" id="results"></div>
+            <!-- Результаты -->
+            <div class="results" id="results">
+                <div class="stats" id="stats"></div>
+                
+                <div class="output-section">
+                    <div class="output-header">
+                        <span class="output-title">📄 Результаты проверки</span>
+                        <button class="download-btn" onclick="downloadTxt()">
+                            💾 Сохранить .txt
+                        </button>
+                    </div>
+                    <div class="output-box" id="output"></div>
+                </div>
+                
+                <div class="output-section">
+                    <div class="output-header">
+                        <span class="output-title">📊 Детальная информация</span>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table class="details-table">
+                            <thead>
+                                <tr>
+                                    <th>Номер</th>
+                                    <th>ID</th>
+                                    <th>Pay карта</th>
+                                    <th>ГУ подтв.</th>
+                                    <th>Дата рожд.</th>
+                                    <th>Блок</th>
+                                    <th>Статус</th>
+                                    <th>Рекомендация</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detailsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
+        let currentOutput = '';
+        let currentResults = [];
+        
+        // Показать/скрыть логику
+        function toggleLogic() {
+            const content = document.getElementById('logicContent');
+            content.classList.toggle('active');
+        }
+        
+        // Показываем логику по умолчанию
+        document.getElementById('logicContent').classList.add('active');
+        
         async function checkPhones() {
             const textarea = document.getElementById('phones');
             const btn = document.getElementById('checkBtn');
             const loading = document.getElementById('loading');
-            const loadingText = document.getElementById('loadingText');
+            const progress = document.getElementById('progress');
             const results = document.getElementById('results');
-            const useSelenium = document.getElementById('useSelenium').checked;
+            const output = document.getElementById('output');
+            const stats = document.getElementById('stats');
+            const detailsBody = document.getElementById('detailsBody');
             
             const phones = textarea.value.split('\n').filter(p => p.trim());
             
@@ -419,21 +605,16 @@
             }
             
             btn.disabled = true;
-            loading.style.display = 'block';
-            results.innerHTML = '';
-            
-            if (useSelenium) {
-                loadingText.textContent = `Проверяем ${phones.length} номер(ов)... (~${phones.length * 15} сек)`;
-            }
+            loading.classList.add('active');
+            results.classList.remove('active');
             
             try {
+                progress.textContent = `Отправлено ${phones.length} номеров на проверку...`;
+                
                 const response = await fetch('/api/check-batch', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        phones: phones,
-                        use_selenium: useSelenium
-                    })
+                    body: JSON.stringify({ phones: phones })
                 });
                 
                 const data = await response.json();
@@ -442,143 +623,81 @@
                     throw new Error(data.error);
                 }
                 
-                const statsHtml = `
-                    <div class="stats">
-                        <div class="stat-card">
-                            <div class="stat-number">${data.total}</div>
-                            <div class="stat-label">Всего</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number" style="color: #28a745;">${data.clean}</div>
-                            <div class="stat-label">Чистые</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number" style="color: #6f42c1;">${data.with_yandex_pay || 0}</div>
-                            <div class="stat-label">Yandex Pay</div>
-                        </div>
+                currentOutput = data.text_output;
+                currentResults = data.results;
+                
+                // Форматируем вывод с цветами
+                const lines = data.results.map(r => {
+                    return `<div class="result-line ${r.status}">${r.formatted}</div>`;
+                }).join('');
+                
+                output.innerHTML = lines;
+                
+                // Статистика
+                const s = data.stats;
+                stats.innerHTML = `
+                    <div class="stat-card total">
+                        <div class="stat-value">${s.by_status.total}</div>
+                        <div class="stat-label">Всего</div>
+                    </div>
+                    <div class="stat-card buy">
+                        <div class="stat-value">${s.buy_recommended}</div>
+                        <div class="stat-label">Купить (идеальные)</div>
+                    </div>
+                    <div class="stat-card work">
+                        <div class="stat-value">${s.buy_with_work}</div>
+                        <div class="stat-label">Купить (нужна работа)</div>
+                    </div>
+                    <div class="stat-card block">
+                        <div class="stat-value">${s.do_not_buy}</div>
+                        <div class="stat-label">Не покупать</div>
                     </div>
                 `;
                 
-                const phonesHtml = data.results.map(r => {
-                    let cardClass = 'clean';
-                    let badgeClass = 'clean';
-                    let badgeText = '✅ ЧИСТЫЙ';
-                    
-                    if (r.is_blocked) {
-                        cardClass = 'blocked';
-                        badgeClass = 'blocked';
-                        badgeText = '❌ БЛОК';
-                    } else if (r.has_yandex_pay) {
-                        cardClass = 'has-pay';
-                        badgeClass = 'has-pay';
-                        badgeText = '💳 YANDEX PAY';
-                    } else if (r.birth_date && r.birth_date.day) {
-                        cardClass = 'has-data';
-                        badgeClass = 'has-data';
-                        badgeText = '🎂 ДАТА НАЙДЕНА';
-                    } else if (r.has_gosuslugi) {
-                        cardClass = 'has-data';
-                        badgeClass = 'has-data';
-                        badgeText = '📋 ГОСУСЛУГИ';
-                    } else if (!r.is_clean) {
-                        cardClass = 'occupied';
-                        badgeClass = 'occupied';
-                        badgeText = '⚠️ ЗАНЯТ';
-                    }
-                    
-                    // Yandex Pay блок
-                    let yandexPayHtml = '';
-                    if (r.has_yandex_pay) {
-                        yandexPayHtml = `
-                            <div class="yandex-pay-box">
-                                <div class="yandex-pay-label">Yandex Pay</div>
-                                <div class="yandex-pay-status">КАРТА ЕСТЬ</div>
-                                <div class="yandex-pay-verified">${r.yandex_pay_verified ? '✓ Верифицирована' : '✗ Не верифицирована'}</div>
-                            </div>
-                        `;
-                    }
-                    
-                    // Дата рождения блок
-                    let birthDateHtml = '';
-                    if (r.birth_date && r.birth_date.day && r.birth_date.month && r.birth_date.year) {
-                        birthDateHtml = `
-                            <div class="birth-date-box">
-                                <div class="birth-date-label">Дата рождения</div>
-                                <div class="birth-date-value">${r.birth_date.formatted}</div>
-                                ${r.gosuslugi_name ? `<div class="birth-date-name">${r.gosuslugi_name}</div>` : ''}
-                            </div>
-                        `;
-                    }
-                    
-                    const gosuslugiIcon = r.has_gosuslugi ? (r.birth_date?.day ? '🎂' : '📋') : '❌';
-                    const yandexIdIcon = r.yandex_blocked ? '🚫' : (r.has_yandex_id ? '⚠️' : '✅');
-                    const yoomoneyIcon = r.has_yoomoney ? '💰' : '✅';
-                    const yandexPayIcon = r.has_yandex_pay ? '💳' : '✅';
+                // Детальная таблица
+                detailsBody.innerHTML = data.results.map(r => {
+                    const idIcon = r.id ? '<span class="icon-yes">✅</span>' : '<span class="icon-no">❌</span>';
+                    const payIcon = r.pay ? '<span class="icon-yes">✅</span>' : '<span class="icon-no">❌</span>';
+                    const guIcon = r.gu_verified ? '<span class="icon-yes">✅</span>' : '<span class="icon-no">❌</span>';
+                    const blockIcon = r.blocked ? '<span class="icon-stop">🛑</span>' : '<span class="icon-no">❌</span>';
                     
                     return `
-                    <div class="phone-card ${cardClass}">
-                        <div class="phone-header">
-                            <span class="phone-number">${r.phone}</span>
-                            <span class="badge ${badgeClass}">${badgeText}</span>
-                        </div>
-                        
-                        ${yandexPayHtml}
-                        ${birthDateHtml}
-                        
-                        <div class="service-status">
-                            <div class="service-item">
-                                <span class="icon">${yandexPayIcon}</span>
-                                <span>Yandex Pay: ${r.has_yandex_pay ? (r.yandex_pay_verified ? 'есть (вериф.)' : 'есть (не вериф.)') : 'нет'}</span>
-                            </div>
-                            <div class="service-item">
-                                <span class="icon">${gosuslugiIcon}</span>
-                                <span>Госуслуги: ${r.has_gosuslugi ? (r.birth_date?.day ? 'дата найдена' : 'найдены') : 'не найдены'}</span>
-                            </div>
-                            <div class="service-item">
-                                <span class="icon">${yandexIdIcon}</span>
-                                <span>Yandex ID: ${r.yandex_blocked ? 'заблокирован' : (r.has_yandex_id ? 'есть' : 'нет')}</span>
-                            </div>
-                            <div class="service-item">
-                                <span class="icon">${yoomoneyIcon}</span>
-                                <span>ЮMoney: ${r.has_yoomoney ? 'есть' : 'нет'}</span>
-                            </div>
-                        </div>
-                        
-                        <div class="recommendation" style="background: ${r.is_blocked ? '#f8d7da' : (r.has_yandex_pay ? '#e2d4f0' : (r.birth_date?.day ? '#d1ecf1' : (r.is_clean ? '#d4edda' : '#fff3cd')))}; color: ${r.is_blocked ? '#721c24' : (r.has_yandex_pay ? '#4a2c7a' : (r.birth_date?.day ? '#0c5460' : (r.is_clean ? '#155724' : '#856404')))};">
-                            ${r.recommendation}
-                        </div>
-                        
-                        ${r.debug ? `
-                        <details class="debug-info">
-                            <summary>🔧 Debug</summary>
-                            <div class="debug-content">
-                                <strong>Yandex Pay:</strong><br>
-                                ${JSON.stringify(r.debug.yandex_pay, null, 2)}<br>
-                                <hr style="margin: 8px 0;">
-                                <strong>Госуслуги:</strong><br>
-                                ${JSON.stringify(r.debug.gosuslugi, null, 2)}<br>
-                                <hr style="margin: 8px 0;">
-                                <strong>Yandex ID:</strong><br>
-                                ${JSON.stringify(r.debug.yandex_id, null, 2)}<br>
-                                <hr style="margin: 8px 0;">
-                                <strong>ЮMoney:</strong><br>
-                                ${JSON.stringify(r.debug.yoomoney, null, 2)}
-                            </div>
-                        </details>
-                        ` : ''}
-                    </div>
-                `}).join('');
+                        <tr>
+                            <td>${r.number}</td>
+                            <td>${idIcon}</td>
+                            <td>${payIcon}</td>
+                            <td>${guIcon}</td>
+                            <td>${r.birth_date || '—'}</td>
+                            <td>${blockIcon}</td>
+                            <td><span class="badge ${r.status}">${r.status}</span></td>
+                            <td>${r.recommendation}</td>
+                        </tr>
+                    `;
+                }).join('');
                 
-                results.innerHTML = statsHtml + phonesHtml;
-                
-                await fetch('/api/close-driver', {method: 'POST'});
+                results.classList.add('active');
                 
             } catch (error) {
-                results.innerHTML = `<div style="color: #dc3545; text-align: center; padding: 20px;">Ошибка: ${error.message}</div>`;
+                alert('Ошибка: ' + error.message);
+                console.error(error);
             }
             
-            loading.style.display = 'none';
+            loading.classList.remove('active');
             btn.disabled = false;
+        }
+        
+        function downloadTxt() {
+            if (!currentOutput) return;
+            
+            const blob = new Blob([currentOutput], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'helpik_results_' + new Date().toISOString().slice(0,10) + '.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
     </script>
 </body>
