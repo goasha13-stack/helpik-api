@@ -14,7 +14,7 @@
         }
         
         .container { 
-            max-width: 900px; 
+            max-width: 1000px; 
             margin: 0 auto; 
             background: white; 
             border-radius: 12px;
@@ -29,19 +29,11 @@
             text-align: center;
         }
         
-        .header h1 { 
-            font-size: 28px; 
-            margin-bottom: 10px;
-        }
-        
-        .header p {
-            opacity: 0.9;
-            font-size: 14px;
-        }
+        .header h1 { font-size: 28px; margin-bottom: 10px; }
+        .header p { opacity: 0.9; font-size: 14px; }
         
         .content { padding: 30px; }
         
-        /* Панель логики */
         .logic-panel {
             background: #f8f9fa;
             border: 1px solid #e9ecef;
@@ -67,28 +59,23 @@
             border-radius: 4px;
             font-size: 12px;
             cursor: pointer;
+            margin-left: auto;
         }
         
-        .logic-content {
-            display: none;
-            margin-top: 15px;
-        }
-        
-        .logic-content.active {
-            display: block;
-        }
+        .logic-content { display: none; margin-top: 15px; }
+        .logic-content.active { display: block; }
         
         .status-legend {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 10px;
         }
         
         .status-item {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 10px;
-            padding: 10px;
+            padding: 12px;
             background: white;
             border-radius: 6px;
             border-left: 4px solid;
@@ -100,9 +87,7 @@
         .status-item.blocked { border-left-color: #dc3545; }
         .status-item.id_no_pay { border-left-color: #6c757d; }
         
-        .status-icon {
-            font-size: 20px;
-        }
+        .status-icon { font-size: 20px; }
         
         .status-text {
             font-size: 13px;
@@ -116,62 +101,7 @@
             margin-bottom: 2px;
         }
         
-        /* Параметры проверки */
-        .params-info {
-            background: #e3f2fd;
-            border-radius: 6px;
-            padding: 15px;
-            margin-top: 15px;
-            font-size: 13px;
-        }
-        
-        .params-info h4 {
-            margin-bottom: 10px;
-            color: #1976d2;
-        }
-        
-        .params-info ul {
-            margin-left: 20px;
-            line-height: 1.8;
-        }
-        
-        .params-info code {
-            background: #fff;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: monospace;
-        }
-        
-        .logic-note {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 12px;
-            margin-top: 15px;
-            border-radius: 4px;
-            font-size: 13px;
-        }
-        
-        .logic-note strong {
-            color: #856404;
-        }
-        
-        .birth-date-rule {
-            background: #d4edda;
-            border-left: 4px solid #28a745;
-            padding: 12px;
-            margin-top: 15px;
-            border-radius: 4px;
-            font-size: 13px;
-        }
-        
-        .birth-date-rule strong {
-            color: #155724;
-        }
-        
-        /* Основная форма */
-        .input-section {
-            margin-bottom: 25px;
-        }
+        .input-section { margin-bottom: 25px; }
         
         .input-label {
             display: block;
@@ -188,7 +118,7 @@
             border-radius: 8px;
             font-size: 14px;
             resize: vertical;
-            min-height: 120px;
+            min-height: 150px;
             font-family: monospace;
             transition: border-color 0.3s;
         }
@@ -196,10 +126,6 @@
         textarea:focus {
             outline: none;
             border-color: #667eea;
-        }
-        
-        textarea::placeholder {
-            color: #aaa;
         }
         
         .btn {
@@ -215,28 +141,23 @@
             transition: transform 0.2s, box-shadow 0.2s;
         }
         
-        .btn:hover {
+        .btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
         }
         
         .btn:disabled {
             background: #ccc;
-            transform: none;
-            box-shadow: none;
             cursor: not-allowed;
         }
         
-        /* Загрузка */
         .loading {
             text-align: center;
             padding: 40px;
             display: none;
         }
         
-        .loading.active {
-            display: block;
-        }
+        .loading.active { display: block; }
         
         .spinner {
             width: 50px;
@@ -253,30 +174,12 @@
             100% { transform: rotate(360deg); }
         }
         
-        .loading-text {
-            color: #666;
-            font-size: 16px;
-        }
-        
-        .progress {
-            margin-top: 10px;
-            font-size: 14px;
-            color: #999;
-        }
-        
-        /* Результаты */
-        .results {
-            display: none;
-            margin-top: 30px;
-        }
-        
-        .results.active {
-            display: block;
-        }
+        .results { display: none; margin-top: 30px; }
+        .results.active { display: block; }
         
         .stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
             gap: 15px;
             margin-bottom: 25px;
         }
@@ -294,19 +197,9 @@
         .stat-card.work { border-top-color: #ffc107; }
         .stat-card.block { border-top-color: #dc3545; }
         
-        .stat-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: #333;
-        }
+        .stat-value { font-size: 24px; font-weight: bold; color: #333; }
+        .stat-label { font-size: 12px; color: #666; margin-top: 5px; }
         
-        .stat-label {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-        }
-        
-        /* Вывод результатов */
         .output-section {
             background: #f8f9fa;
             border-radius: 8px;
@@ -319,13 +212,11 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
         }
         
-        .output-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #333;
-        }
+        .output-title { font-size: 16px; font-weight: 600; color: #333; }
         
         .output-box {
             background: white;
@@ -335,41 +226,25 @@
             font-family: monospace;
             font-size: 13px;
             line-height: 1.8;
-            max-height: 400px;
+            max-height: 500px;
             overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
         }
         
         .result-line {
-            padding: 8px;
-            margin: 4px 0;
+            padding: 10px;
+            margin: 6px 0;
             border-radius: 4px;
-            transition: background 0.2s;
+            border-left: 4px solid;
+            background: #fafafa;
         }
         
-        .result-line:hover {
-            background: #f0f0f0;
-        }
-        
-        .result-line.clean { 
-            background: #d4edda; 
-            border-left: 3px solid #28a745;
-        }
-        .result-line.pay_verif { 
-            background: #d4edda; 
-            border-left: 3px solid #28a745;
-        }
-        .result-line.pay_no_verif { 
-            background: #fff3cd; 
-            border-left: 3px solid #ffc107;
-        }
-        .result-line.blocked { 
-            background: #f8d7da; 
-            border-left: 3px solid #dc3545;
-        }
-        .result-line.id_no_pay { 
-            background: #e2e3e5; 
-            border-left: 3px solid #6c757d;
-        }
+        .result-line.clean { border-left-color: #28a745; background: #d4edda; }
+        .result-line.pay_verif { border-left-color: #28a745; background: #d4edda; }
+        .result-line.pay_no_verif { border-left-color: #ffc107; background: #fff3cd; }
+        .result-line.blocked { border-left-color: #dc3545; background: #f8d7da; }
+        .result-line.id_no_pay { border-left-color: #6c757d; background: #e2e3e5; }
         
         .download-btn {
             background: #28a745;
@@ -384,11 +259,8 @@
             gap: 8px;
         }
         
-        .download-btn:hover {
-            background: #218838;
-        }
+        .download-btn:hover { background: #218838; }
         
-        /* Детальная таблица */
         .details-table {
             width: 100%;
             border-collapse: collapse;
@@ -409,16 +281,15 @@
             color: #555;
         }
         
-        .details-table tr:hover {
-            background: #f8f9fa;
-        }
+        .details-table tr:hover { background: #f8f9fa; }
         
         .badge {
             display: inline-block;
-            padding: 4px 8px;
+            padding: 4px 10px;
             border-radius: 4px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
+            text-transform: uppercase;
         }
         
         .badge.clean { background: #d4edda; color: #155724; }
@@ -430,17 +301,39 @@
         .icon-yes { color: #28a745; }
         .icon-no { color: #dc3545; }
         .icon-stop { color: #dc3545; font-size: 16px; }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            border-left: 4px solid #dc3545;
+        }
+        
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>🔍 Helpik</h1>
-            <p>Проверка номеров для покупки: Yandex ID, Pay карта, верификация, блокировки</p>
+            <p>Проверка номеров: Yandex ID, Pay карта, верификация, блокировки</p>
         </div>
         
         <div class="content">
-            <!-- Панель логики -->
+            <div class="warning-box">
+                <strong>⚠️ Важно:</strong> Для корректной работы необходимы рабочие API Яндекса и доступ к Госуслугам. 
+                Если все номера показывают одинаковый результат — проверьте логи сервера.
+            </div>
+            
             <div class="logic-panel">
                 <h3>
                     📋 Логика проверки
@@ -452,89 +345,70 @@
                         <div class="status-item clean">
                             <span class="status-icon">✨</span>
                             <div class="status-text">
-                                <strong>ЧИСТЫЙ (clean)</strong>
-                                Нет ID, нет Pay карты. Рекомендуем к покупке — идеальный номер
+                                <strong>ЧИСТЫЙ</strong>
+                                Нет ID, нет Pay карты. Дату не ищем. Рекомендуем к покупке — идеальный номер
                             </div>
                         </div>
                         
                         <div class="status-item pay_verif">
                             <span class="status-icon">✅</span>
                             <div class="status-text">
-                                <strong>ХОРОШИЙ (pay_verif)</strong>
-                                Pay карта открыта + подтверждено в Госуслугах. Рекомендуем к покупке
+                                <strong>ХОРОШИЙ</strong>
+                                Pay карта + подтверждено в Госуслугах (дата найдена). Рекомендуем к покупке
                             </div>
                         </div>
                         
                         <div class="status-item pay_no_verif">
                             <span class="status-icon">⚠️</span>
                             <div class="status-text">
-                                <strong>НУЖНА ВЕРИФИКАЦИЯ (pay_no_verif)</strong>
-                                Pay карта есть, но Госуслуги не подтверждены. Купить можно, требуется верификация по дате рождения бывшего владельца
+                                <strong>НУЖНА ВЕРИФИКАЦИЯ</strong>
+                                Pay карта есть, но дата в Госуслугах не найдена. Купить можно, требуется верификация
                             </div>
                         </div>
                         
                         <div class="status-item blocked">
                             <span class="status-icon">🛑</span>
                             <div class="status-text">
-                                <strong>СТОП (blocked)</strong>
-                                Номер заблокирован. НЕ ПОКУПАТЬ
+                                <strong>СТОП</strong>
+                                Номер заблокирован. НЕ ПОКУПАТЬ (даже если есть Pay и верификация)
                             </div>
                         </div>
                         
                         <div class="status-item id_no_pay">
                             <span class="status-icon">❓</span>
                             <div class="status-text">
-                                <strong>Только ID (id_no_pay)</strong>
+                                <strong>Только ID</strong>
                                 Есть аккаунт Яндекса, но нет Pay карты. Нейтральный статус
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="params-info">
-                        <h4>🔧 Параметры проверки:</h4>
-                        <ul>
-                            <li><code>id</code> — есть ли Yandex ID (аккаунт в Яндексе)</li>
-                            <li><code>pay</code> — есть ли открытая карта Yandex Pay</li>
-                            <li><code>гу</code> — подтверждено ли в Госуслугах (по наличию даты рождения)</li>
-                            <li><code>дд.мм.гггг</code> — дата рождения из Госуслуг (нужна для верификации)</li>
-                            <li><code>блок</code> — есть ли ограничения/блокировка на номере</li>
-                        </ul>
-                    </div>
-                    
-                    <div class="logic-note">
-                        <strong>💡 Ключевое правило верификации:</strong><br>
-                        Верифицирован = Pay карта открыта + найдена дата рождения в Госуслугах.<br>
-                        Если Pay есть, но даты нет — значит при верификации была указана неверная дата или Госуслуги не подтверждены.<br>
-                        Дата рождения нужна для повторной верификации номера через Госуслуги.
-                    </div>
-                    
-                    <div class="birth-date-rule">
-                        <strong>📅 Правило поиска даты рождения:</strong><br>
-                        Дата рождения <strong>ищется для ВСЕХ номеров</strong>, кроме чистых (где нет ID и нет Pay).<br>
-                        То есть ищем дату если: есть Pay карта ИЛИ есть ID ИЛИ есть блокировка.<br>
-                        Дата нужна для всех не-чистых номеров — независимо от статуса верификации.
-                    </div>
                 </div>
             </div>
             
-            <!-- Форма ввода -->
             <div class="input-section">
                 <label class="input-label">Введите номера телефонов (по одному на строку):</label>
-                <textarea id="phones" placeholder="79113725286&#10;79222909198&#10;79222991829&#10;79222996301&#10;79133484680"></textarea>
+                <textarea id="phones" placeholder="79113725286
+79222909198
+79222991829
+79222996301
+79133484680
+79326374121
+79326379039"></textarea>
             </div>
             
             <button class="btn" onclick="checkPhones()" id="checkBtn">
                 🔍 Проверить номера
             </button>
             
-            <!-- Загрузка -->
             <div class="loading" id="loading">
                 <div class="spinner"></div>
                 <div class="loading-text">Проверяем номера...</div>
                 <div class="progress" id="progress"></div>
+                <div style="margin-top: 10px; color: #999; font-size: 12px;">
+                    Это может занять 30-60 секунд на номер (Selenium + API)
+                </div>
             </div>
             
-            <!-- Результаты -->
             <div class="results" id="results">
                 <div class="stats" id="stats"></div>
                 
@@ -558,12 +432,11 @@
                                 <tr>
                                     <th>Номер</th>
                                     <th>ID</th>
-                                    <th>Pay карта</th>
-                                    <th>ГУ подтв.</th>
+                                    <th>Pay</th>
+                                    <th>ГУ вериф</th>
                                     <th>Дата рожд.</th>
                                     <th>Блок</th>
                                     <th>Статус</th>
-                                    <th>Рекомендация</th>
                                 </tr>
                             </thead>
                             <tbody id="detailsBody"></tbody>
@@ -578,14 +451,10 @@
         let currentOutput = '';
         let currentResults = [];
         
-        // Показать/скрыть логику
         function toggleLogic() {
             const content = document.getElementById('logicContent');
             content.classList.toggle('active');
         }
-        
-        // Показываем логику по умолчанию
-        document.getElementById('logicContent').classList.add('active');
         
         async function checkPhones() {
             const textarea = document.getElementById('phones');
@@ -609,7 +478,7 @@
             results.classList.remove('active');
             
             try {
-                progress.textContent = `Отправлено ${phones.length} номеров на проверку...`;
+                progress.textContent = `Отправлено ${phones.length} номеров. Ожидайте...`;
                 
                 const response = await fetch('/api/check-batch', {
                     method: 'POST',
@@ -626,12 +495,12 @@
                 currentOutput = data.text_output;
                 currentResults = data.results;
                 
-                // Форматируем вывод с цветами
+                // Форматируем вывод
                 const lines = data.results.map(r => {
-                    return `<div class="result-line ${r.status}">${r.formatted}</div>`;
+                    return `<div class="result-line ${r.status}">${escapeHtml(r.formatted)}</div>`;
                 }).join('');
                 
-                output.innerHTML = lines;
+                output.innerHTML = lines || '<div class="error-message">Нет результатов</div>';
                 
                 // Статистика
                 const s = data.stats;
@@ -663,14 +532,13 @@
                     
                     return `
                         <tr>
-                            <td>${r.number}</td>
+                            <td><strong>${r.number}</strong></td>
                             <td>${idIcon}</td>
                             <td>${payIcon}</td>
                             <td>${guIcon}</td>
                             <td>${r.birth_date || '—'}</td>
                             <td>${blockIcon}</td>
                             <td><span class="badge ${r.status}">${r.status}</span></td>
-                            <td>${r.recommendation}</td>
                         </tr>
                     `;
                 }).join('');
@@ -684,6 +552,12 @@
             
             loading.classList.remove('active');
             btn.disabled = false;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
         
         function downloadTxt() {
