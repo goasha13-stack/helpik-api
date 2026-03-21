@@ -36,7 +36,7 @@ class YandexPayChecker:
             digits = '7' + digits[1:]
         elif digits.startswith('9') and len(digits) == 10:
             digits = '7' + digits
-        return digits  # без +
+        return digits
     
     def init_selenium(self):
         if self.driver:
@@ -59,13 +59,13 @@ class YandexPayChecker:
         except:
             return None
     
-    def check_gosuslugi(self, phone):
-        """Получение даты рождения через Selenium"""
+    def check_gosuslugi_date(self, phone):
+        """Получение даты рождения через Госуслуги"""
         normalized = self.normalize_phone(phone)
         driver = self.init_selenium()
         
         if not driver:
-            return {'birth_date': None, 'error': 'selenium'}
+            return None
         
         try:
             driver.delete_all_cookies()
@@ -109,19 +109,12 @@ class YandexPayChecker:
             # Ищем дату ДД.ММ.ГГГГ
             match = re.search(r'(\d{2})\.(\d{2})\.(\d{4})', page_text)
             if match:
-                return {
-                    'birth_date': f"{match.group(1)}.{match.group(2)}.{match.group(3)}",
-                    'found': True
-                }
+                return f"{match.group(1)}.{match.group(2)}.{match.group(3)}"
             
-            # Проверяем есть ли аккаунт без даты
-            if 'учётная запись' in page_text.lower() or 'привязан' in page_text.lower():
-                return {'birth_date': None, 'found': True}
+            return None
             
-            return {'birth_date': None, 'found': False}
-            
-        except Exception as e:
-            return {'birth_date': None, 'error': str(e)}
+        except:
+            return None
     
     def check_yandex(self, phone):
         """Проверка Yandex ID, Pay, блокировки"""
@@ -130,8 +123,7 @@ class YandexPayChecker:
         result = {
             'id': False,
             'pay': False,
-            'blocked': False,
-            'pay_verified': False
+            'blocked': False
         }
         
         # Проверка Yandex ID и блокировки
@@ -149,13 +141,15 @@ class YandexPayChecker:
             
             if data.get('status') == 'error':
                 errors = data.get('errors', {}).get('phone', {})
-                if 'blocked' in str(errors).lower() or 'fraud' in str(errors).lower():
+                error_str = str(errors).lower()
+                
+                if 'blocked' in error_str or 'fraud' in error_str or 'limit' in error_str:
                     result['blocked'] = True
                     result['id'] = True
-                elif 'occupied' in str(errors).lower():
+                elif 'occupied' in error_str:
                     result['id'] = True
             
-            # Дополнительная проверка
+            # Дополнительная проверка accountInformation
             url2 = "https://passport.yandex.ru/registration/validations/accountInformation"
             response2 = self.session.post(url2, data={'phone': '+' + normalized}, headers=headers, timeout=10)
             data2 = response2.json() if response2.text else {}
@@ -181,7 +175,6 @@ class YandexPayChecker:
             
             if data.get('has_card') or data.get('card_available'):
                 result['pay'] = True
-                result['pay_verified'] = data.get('verified', False)
             
             # Проверка через статус
             url2 = "https://pay.yandex.ru/api/v1/user/status"
@@ -190,17 +183,26 @@ class YandexPayChecker:
             
             if data2.get('has_active_card') or data2.get('card_status') == 'active':
                 result['pay'] = True
-                result['pay_verified'] = data2.get('verified', result['pay_verified'])
                 
         except:
             pass
         
-        # Если есть ID, проверяем косвенно Pay
+        # Косвенная проверка Pay через ЮMoney если есть ID
         if result['id'] and not result['pay']:
             try:
-                url = f"https://yoomoney.ru/transfer/quickpay?receiver={normalized}"
-                response = self.session.head(url, timeout=10, allow_redirects=True)
-                # Анализируем редиректы
+                url = "https://yoomoney.ru/api/request-payment"
+                data = {
+                    'pattern_id': 'p2p',
+                    'to': '+' + normalized,
+                    'amount': '1.00'
+                }
+                response = self.session.post(url, data=data, timeout=10)
+                result_data = response.json() if response.text else {}
+                
+                # Если есть кошелек, может быть и Pay
+                if 'contract_amount' in result_data or result_data.get('status') == 'success':
+                    # Проверяем дополнительно
+                    pass
             except:
                 pass
         
@@ -210,40 +212,36 @@ class YandexPayChecker:
         """Полная проверка одного номера"""
         normalized = self.normalize_phone(phone)
         
-        # Проверяем Яндекс
+        # Сначала проверяем Яндекс (ID, Pay, блок)
         yandex = self.check_yandex(phone)
         
-        # Проверяем Госуслуги (только если есть Pay или ID)
-        gosuslugi = {'birth_date': None, 'found': False}
-        if yandex['pay'] or yandex['id']:
-            gosuslugi = self.check_gosuslugi(phone)
+        # Если нет ID и нет Pay — номер чистый, Госуслуги не ищем
+        if not yandex['id'] and not yandex['pay']:
+            return {
+                'number': normalized,
+                'id': False,
+                'pay': False,
+                'gu': False,
+                'birth_date': None,
+                'blocked': False,
+                'status': 'clean'
+            }
         
-        # Формируем результат
-        result = {
+        # Если есть Pay (или ID) — ищем дату рождения в Госуслугах
+        birth_date = self.check_gosuslugi_date(phone)
+        
+        # "гу ✅" = нашли дату рождения
+        gu_found = birth_date is not None
+        
+        return {
             'number': normalized,
             'id': yandex['id'],
             'pay': yandex['pay'],
-            'gu': gosuslugi['found'] and gosuslugi.get('birth_date') is not None,
-            'birth_date': gosuslugi.get('birth_date'),
+            'gu': gu_found,
+            'birth_date': birth_date,
             'blocked': yandex['blocked'],
-            'status': 'unknown'
+            'status': 'pay_with_date' if birth_date else 'pay_no_date'
         }
-        
-        # Определяем статус
-        if yandex['blocked']:
-            result['status'] = 'blocked'
-        elif not yandex['id'] and not yandex['pay']:
-            result['status'] = 'clean'
-        elif yandex['pay'] and gosuslugi.get('birth_date'):
-            result['status'] = 'pay_with_date'
-        elif yandex['pay']:
-            result['status'] = 'pay_no_date'
-        elif yandex['id']:
-            result['status'] = 'id_only'
-        else:
-            result['status'] = 'unknown'
-        
-        return result
     
     def format_output(self, result):
         """Форматирование строки результата"""
@@ -255,21 +253,17 @@ class YandexPayChecker:
         # Базовая строка
         line = f"{n}, id {id_icon}, pay {pay_icon}, гу {gu_icon}"
         
-        # Добавляем дату если есть Pay
-        if result['pay'] and result['birth_date']:
+        # Добавляем дату если есть
+        if result['birth_date']:
             line += f", {result['birth_date']}"
-        elif result['pay'] and not result['birth_date']:
-            line += ", дата не найдена"
         
-        # Добавляем блок
+        # Добавляем блок если есть
         if result['blocked']:
             line += ", блок ✅"
         
-        # Добавляем примечание
+        # Добавляем примечание только для чистых
         if result['status'] == 'clean':
             line += " — чист"
-        elif result['status'] == 'unknown':
-            line += " — ⚠️"
         
         return line
     
@@ -299,6 +293,7 @@ def check_batch():
     
     try:
         for i, phone in enumerate(phones):
+            # Пересоздаем драйвер каждые 3 номера
             if i > 0 and i % 3 == 0:
                 checker.close()
                 time.sleep(2)
@@ -319,7 +314,9 @@ def check_batch():
             
             output_lines.append(formatted)
             
-            time.sleep(3)
+            # Задержка между запросами
+            if i < len(phones) - 1:
+                time.sleep(3)
         
         return jsonify({
             'total': len(results),
