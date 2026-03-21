@@ -5,6 +5,7 @@ import re
 import os
 import time
 import logging
+import json
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -32,21 +33,12 @@ class YandexPayChecker:
     - Наличие открытой карты Yandex Pay
     - Подтверждение в Госуслугах (по наличию даты рождения)
     - Блокировки/ограничения
-    
-    ЛОГИКА ВЕРИФИКАЦИИ:
-    - Верифицирован = есть Pay карта + найдена дата рождения в Госуслугах
-    - Не верифицирован = есть Pay карта, но дата в Госуслугах не найдена
-    - Чистый = нет Pay карты И нет Yandex ID
-    
-    ПОИСК ДАТЫ РОЖДЕНИЯ:
-    - Ищется для ВСЕХ номеров, кроме чистых (где нет ID и нет Pay)
-    - То есть ищем если: есть Pay ИЛИ есть ID ИЛИ есть блокировка
     """
     
     def __init__(self):
         self.session = requests.Session()
         self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.0.36',
             'Accept': 'application/json, text/plain, */*',
             'Accept-Language': 'ru-RU,ru;q=0.9',
             'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
@@ -92,18 +84,7 @@ class YandexPayChecker:
     def check_gosuslugi_date(self, phone):
         """
         Получение даты рождения через Госуслуги.
-        
-        ДАТА ИЩЕТСЯ ДЛЯ ВСЕХ НОМЕРОВ, КРОМЕ ЧИСТЫХ (где нет ID и нет Pay).
-        
-        ЭТО КЛЮЧЕВОЙ ПАРАМЕТР для определения верификации:
-        - Если дата найдена → Госуслуги подтверждены → верификация пройдена
-        - Если даты нет → Госуслуги не подтверждены → нужна верификация
-        
-        Дата рождения нужна для верификации номера через Госуслуги.
-        Если при верификации указана неверная дата — вериф не пройдёт.
-        
-        Returns:
-            str: Дата в формате ДД.ММ.ГГГГ или None
+        Returns: str: Дата в формате ДД.ММ.ГГГГ или None
         """
         normalized = self.normalize_phone(phone)
         driver = self.init_selenium()
@@ -162,155 +143,190 @@ class YandexPayChecker:
                 logger.info(f"Найдена дата рождения: {date_str}")
                 return date_str
             
-            logger.info("Дата рождения не найдена (Госуслуги не подтверждены)")
+            logger.info("Дата рождения не найдена")
             return None
             
         except Exception as e:
             logger.error(f"Ошибка при проверке Госуслуг: {e}")
             return None
     
-    def check_yandex(self, phone):
+    def check_yandex_id(self, phone):
         """
-        Проверка Yandex ID, Pay, блокировки
-        
-        Returns:
-            dict: {'id': bool, 'pay': bool, 'blocked': bool}
+        Проверка наличия Yandex ID и блокировки
+        Returns: dict с ключами 'exists' (bool), 'blocked' (bool)
         """
         normalized = self.normalize_phone(phone)
+        result = {'exists': False, 'blocked': False}
         
-        result = {
-            'id': False,
-            'pay': False,
-            'blocked': False
-        }
-        
-        # Проверка Yandex ID и блокировки через паспорт
         try:
+            # Проверка через паспорт Яндекса
             url = "https://passport.yandex.ru/registration/validations/phone"
             headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                 'Accept': 'application/json',
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'Origin': 'https://passport.yandex.ru',
+                'Referer': 'https://passport.yandex.ru/',
             }
             
-            response = self.session.post(url, data={'phone': '+' + normalized}, headers=headers, timeout=10)
-            data = response.json() if response.text else {}
+            response = self.session.post(
+                url, 
+                data={'phone': '+' + normalized}, 
+                headers=headers, 
+                timeout=10
+            )
             
+            logger.info(f"Yandex ID check response: {response.text}")
+            
+            try:
+                data = response.json()
+            except:
+                data = {}
+            
+            # Анализируем ответ
             if data.get('status') == 'error':
-                errors = data.get('errors', {}).get('phone', {})
-                error_str = str(errors).lower()
+                errors = data.get('errors', {})
+                phone_errors = errors.get('phone', {}) if isinstance(errors, dict) else {}
                 
-                if 'blocked' in error_str or 'fraud' in error_str or 'limit' in error_str:
-                    result['blocked'] = True
-                    result['id'] = True
-                elif 'occupied' in error_str:
-                    result['id'] = True
+                if isinstance(phone_errors, dict):
+                    error_keys = list(phone_errors.keys())
+                    error_str = str(phone_errors).lower()
+                    
+                    # Проверяем блокировку
+                    if any(x in error_str for x in ['blocked', 'fraud', 'limit', 'banned']):
+                        result['blocked'] = True
+                        result['exists'] = True
+                        logger.info(f"Номер {normalized}: заблокирован")
+                    # Проверяем занятость (есть ID)
+                    elif any(x in error_str for x in ['occupied', 'exists', 'registered']):
+                        result['exists'] = True
+                        logger.info(f"Номер {normalized}: ID существует")
+                        
             elif data.get('status') == 'ok':
-                # Номер свободен - ни ID ни блока
-                pass
-            
-            # Дополнительная проверка accountInformation
-            url2 = "https://passport.yandex.ru/registration/validations/accountInformation"
-            response2 = self.session.post(url2, data={'phone': '+' + normalized}, headers=headers, timeout=10)
-            data2 = response2.json() if response2.text else {}
-            
-            if data2.get('status') == 'ok' or data2.get('login'):
-                result['id'] = True
+                # Номер свободен - нет ID
+                logger.info(f"Номер {normalized}: свободен (нет ID)")
                 
         except Exception as e:
             logger.error(f"Ошибка проверки Yandex ID: {e}")
+            
+        return result
+    
+    def check_yandex_pay(self, phone):
+        """
+        Проверка наличия открытой карты Yandex Pay
+        Returns: bool
+        """
+        normalized = self.normalize_phone(phone)
         
-        # Проверка Yandex Pay (открыта ли карта)
         try:
-            url = "https://pay.yandex.ru/api/v1/phone/check"
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'Origin': 'https://pay.yandex.ru',
-            }
+            # Пробуем разные endpoints
+            endpoints = [
+                "https://pay.yandex.ru/api/v1/phone/check",
+                "https://pay.yandex.ru/api/v1/user/status",
+            ]
             
-            response = self.session.post(url, json={'phone': '+' + normalized, 'type': 'card_check'}, headers=headers, timeout=10)
-            data = response.json() if response.text else {}
-            
-            if data.get('has_card') or data.get('card_available'):
-                result['pay'] = True
-            
-            # Проверка через статус пользователя
-            url2 = "https://pay.yandex.ru/api/v1/user/status"
-            response2 = self.session.post(url2, json={'phone': '+' + normalized}, headers=headers, timeout=10)
-            data2 = response2.json() if response2.text else {}
-            
-            if data2.get('has_active_card') or data2.get('card_status') == 'active':
-                result['pay'] = True
-                
+            for url in endpoints:
+                try:
+                    headers = {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'Origin': 'https://pay.yandex.ru',
+                    }
+                    
+                    response = self.session.post(
+                        url, 
+                        json={'phone': '+' + normalized}, 
+                        headers=headers, 
+                        timeout=10
+                    )
+                    
+                    logger.info(f"Yandex Pay check ({url}): {response.text}")
+                    
+                    try:
+                        data = response.json()
+                    except:
+                        continue
+                    
+                    # Проверяем наличие карты
+                    if any([
+                        data.get('has_card'),
+                        data.get('card_available'),
+                        data.get('has_active_card'),
+                        data.get('card_status') == 'active',
+                        data.get('status') == 'active'
+                    ]):
+                        logger.info(f"Номер {normalized}: Pay карта найдена")
+                        return True
+                        
+                except Exception as e:
+                    logger.error(f"Ошибка endpoint {url}: {e}")
+                    continue
+                    
         except Exception as e:
             logger.error(f"Ошибка проверки Yandex Pay: {e}")
-        
-        return result
+            
+        logger.info(f"Номер {normalized}: Pay карта не найдена")
+        return False
     
     def check_number(self, phone):
         """
-        Полная проверка одного номера
-        
-        ЛОГИКА:
-        1. Проверяем Yandex (ID, Pay карта, блок)
-        2. Если нет ID и нет Pay карты → ЧИСТЫЙ номер (не ищем дату рождения)
-        3. Если есть ID ИЛИ Pay карта ИЛИ блок → ищем дату рождения в Госуслугах
-        4. Если Pay карта есть:
-           - Дата найдена → ВЕРИФИЦИРОВАН
-           - Даты нет → НЕ ВЕРИФИЦИРОВАН (нужна дата бывшего владельца)
-        
-        Returns:
-            dict: Результат проверки
+        Полная проверка одного номера с корректной логикой
         """
         normalized = self.normalize_phone(phone)
+        logger.info(f"\n{'='*50}")
         logger.info(f"Проверка номера: {normalized}")
+        logger.info(f"{'='*50}")
         
-        # Шаг 1: Проверяем Яндекс (ID, Pay карта, блок)
-        yandex = self.check_yandex(phone)
+        # Шаг 1: Проверяем Yandex ID и блокировку
+        yandex_id = self.check_yandex_id(phone)
+        id_exists = yandex_id['exists']
+        blocked = yandex_id['blocked']
         
-        # Шаг 2: Определяем нужно ли искать дату рождения
-        need_birth_date = CheckLogic.need_birth_date_search(yandex['id'], yandex['pay'])
+        logger.info(f"ID exists: {id_exists}, Blocked: {blocked}")
         
-        # Шаг 3: Если номер чистый (нет ID и нет Pay) — сразу возвращаем результат
-        if not need_birth_date:
-            return {
-                'number': normalized,
-                'id': False,
-                'pay': False,
-                'gu_verified': False,
-                'birth_date': None,
-                'blocked': False,
-                'status': 'clean'
-            }
+        # Шаг 2: Проверяем Pay карту (только если нет блокировки или есть ID)
+        pay_exists = False
+        if not blocked or id_exists:
+            pay_exists = self.check_yandex_pay(phone)
+            logger.info(f"Pay exists: {pay_exists}")
         
-        # Шаг 4: Для всех остальных ищем дату рождения в Госуслугах
-        birth_date = self.check_gosuslugi_date(phone)
+        # Шаг 3: Определяем, нужно ли искать дату рождения
+        # Ищем дату если: есть ID ИЛИ есть Pay ИЛИ есть блокировка
+        need_birth_date = id_exists or pay_exists or blocked
         
-        # Шаг 5: Определяем верификацию ГУ (только если есть Pay карта)
-        # ВЕРИФИЦИРОВАН = Pay карта есть + дата рождения найдена
-        gu_verified = yandex['pay'] and birth_date is not None
+        birth_date = None
+        gu_verified = False
         
-        # Шаг 6: Определяем финальный статус
+        if need_birth_date:
+            logger.info("Ищем дату рождения в Госуслугах...")
+            birth_date = self.check_gosuslugi_date(phone)
+            gu_verified = pay_exists and birth_date is not None
+            logger.info(f"Birth date: {birth_date}, GU verified: {gu_verified}")
+        else:
+            logger.info("Дату рождения не ищем (чистый номер)")
+        
+        # Шаг 4: Определяем статус
         status = CheckLogic.determine_status(
-            id_exists=yandex['id'],
-            pay_exists=yandex['pay'],
+            id_exists=id_exists,
+            pay_exists=pay_exists,
             gu_verified=gu_verified,
-            blocked=yandex['blocked'],
+            blocked=blocked,
             birth_date=birth_date
         )
         
-        return {
+        result = {
             'number': normalized,
-            'id': yandex['id'],
-            'pay': yandex['pay'],
+            'id': id_exists,
+            'pay': pay_exists,
             'gu_verified': gu_verified,
             'birth_date': birth_date,
-            'blocked': yandex['blocked'],
+            'blocked': blocked,
             'status': status
         }
+        
+        logger.info(f"Результат: {result}")
+        return result
     
     def format_output(self, result):
         """Форматирование строки результата через логику"""
@@ -349,9 +365,6 @@ def index():
 def check_batch():
     """
     API для пакетной проверки номеров
-    
-    Request: {"phones": ["79113725286", "79222909198", ...]}
-    Response: {"total": N, "results": [...], "stats": {...}, "text_output": "..."}
     """
     phones = request.json.get('phones', [])
     
@@ -363,8 +376,8 @@ def check_batch():
     
     try:
         for i, phone in enumerate(phones):
-            # Пересоздаем драйвер каждые 3 номера для стабильности
-            if i > 0 and i % 3 == 0:
+            # Пересоздаем драйвер каждые 2 номера для стабильности
+            if i > 0 and i % 2 == 0:
                 checker.close()
                 time.sleep(2)
             
@@ -392,7 +405,7 @@ def check_batch():
             
             # Задержка между запросами
             if i < len(phones) - 1:
-                time.sleep(3)
+                time.sleep(5)  # Увеличил задержку
         
         # Статистика
         stats = CheckLogic.get_stats_summary(results)
